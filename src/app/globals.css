@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+:root[data-theme='dark'] {
+  --background: #18181b;
+  /* Zinc 900 */
+  --foreground: #f4f4f5;
+  /* Zinc 100 */
+
+  --card-background: #27272a;
+  /* Zinc 800 */
+  --card-border: #3f3f46;
+  /* Zinc 700 */
+  --card-glass: blur(0px);
+  /* Solid for cleaner look */
+
+  --primary: #a1a1aa;
+  /* Zinc 400 - Muted */
+  --primary-glow: rgba(161, 161, 170, 0.1);
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+
+  --sidebar-background: #09090b;
+  /* Zinc 950 */
+  --sidebar-foreground: #a1a1aa;
+  /* Zinc 400 */
+  --sidebar-primary: #e4e4e7;
+  /* Zinc 200 */
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #27272a;
+  /* Zinc 800 */
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: #27272a;
+}
+
+:root[data-theme='light'] {
+  --background: #fdfbf7;
+  /* Warm white/Beige inspired by Claude */
+  --foreground: #3f3f46;
+  /* Zinc 700 */
+
+  --card-background: #ffffff;
+  --card-border: #e4e4e7;
+  /* Zinc 200 */
+  --card-glass: blur(0px);
+
+  --primary: #52525b;
+  /* Zinc 600 */
+  --primary-glow: rgba(82, 82, 91, 0.1);
+
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+
+  --sidebar-background: #f4f4f5;
+  /* Zinc 100 */
+  --sidebar-foreground: #52525b;
+  /* Zinc 600 */
+  --sidebar-primary: #18181b;
+  /* Zinc 900 */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e4e7;
+  /* Zinc 200 */
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  /* Zinc 200 */
+}
+
+/* Default to light for clean execution look */
+:root {
+  --background: #fdfbf7;
+  --foreground: #3f3f46;
+  --card-background: #ffffff;
+  --card-border: #e4e4e7;
+  --card-glass: blur(0px);
+  --primary: #52525b;
+  --primary-glow: rgba(82, 82, 91, 0.1);
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --sidebar-background: #f4f4f5;
+  --sidebar-foreground: #52525b;
+  --sidebar-primary: #18181b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e4e7;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+}
+
+@layer base {
+  * {
+    border-color: var(--sidebar-border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background-color: var(--card-background);
+    border: 1px solid var(--card-border);
+    backdrop-filter: var(--card-glass);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .glow-border {
+    position: relative;
+  }
+
+  .glow-border::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(45deg, var(--primary), transparent, var(--primary));
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0.2;
+    transition: opacity 0.3s ease;
+  }
+
+  .glow-border:hover::after {
+    opacity: 0.4;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-primary);
+}

@@ -1,0 +1,93 @@
+# OAuth Configuration Instructions
+
+This document provides step-by-step instructions for obtaining the Client IDs and Client Secrets required to connect the Reporting Portal to Clio, GoHighLevel, and QuickBooks.
+
+---
+
+## General Configuration
+For all services, you will need to provide a **Redirect URI** (also called Callback URL). 
+Format: `[YOUR_APP_URL]/api/auth/callback/[service_id]`
+
+If testing locally:
+- Clio: `http://localhost:3000/api/auth/callback/clio`
+- GoHighLevel: `http://localhost:3000/api/auth/callback/gohighlevel`
+- QuickBooks: `http://localhost:3000/api/auth/callback/quickbooks`
+
+---
+
+## 1. Clio
+**What to do:**
+1. Log in to your Clio account.
+2. Go to **Settings** > **Apps** > **Developer Applications**.
+3. Click **Add** to create a new application.
+4. Set the **Redirect URI** as shown above.
+5. Save the application.
+
+**Credentials Needed:**
+- Client ID (Application Key)
+- Client Secret (Application Secret)
+
+**Required Scopes:**
+- `openid` (Standard for identity)
+
+---
+
+## 2. GoHighLevel (GHL)
+**What to do:**
+1. Go to the [HighLevel Marketplace](https://marketplace.gohighlevel.com/).
+2. Log in with your Agency or Admin account.
+3. Go to **My Apps** and click **Create App**.
+4. Fill in the app details.
+5. In the **Redirect URI** field, enter your callback URL.
+6. Under **Scopes**, select the permissions listed below.
+7. Save/Create.
+
+**Credentials Needed:**
+- Client ID
+- Client Secret
+
+**Required Scopes:**
+- `contacts.readonly`
+- `contacts.write`
+- `opportunities.readonly`
+- `calendars.readonly`
+
+---
+
+## 3. QuickBooks Online
+**What to do:**
+1. Go to the [Intuit Developer Portal](https://developer.intuit.com/).
+2. Sign in and go to **My Apps**.
+3. Click **Create an app** and select **QuickBooks Online and Payments**.
+4. Select the **Scopes** (Accounting) and click **Create app**.
+5. Once created, go to **Keys & OAuth** in the side menu.
+6. Add your **Redirect URI** in the "Redirect URIs" section.
+7. Copy the keys from the "Production Keys" or "Sandbox Keys" section.
+
+**Credentials Needed:**
+- Client ID
+- Client Secret
+
+**Required Scopes:**
+- `com.intuit.quickbooks.accounting` (For financial data)
+- `openid`
+- `profile`
+- `email`
+
+---
+
+## Post-Setup
+Once you have these credentials, add them to your `.env` file in the project root:
+
+```env
+CLIO_CLIENT_ID=your_id
+CLIO_CLIENT_SECRET=your_secret
+
+GOHIGHLEVEL_CLIENT_ID=your_id
+GOHIGHLEVEL_CLIENT_SECRET=your_secret
+
+QUICKBOOKS_CLIENT_ID=your_id
+QUICKBOOKS_CLIENT_SECRET=your_secret
+
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
