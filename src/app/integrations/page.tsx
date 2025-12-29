@@ -12,7 +12,7 @@ const SERVICES_META = {
         description: "Financial data, invoices, and expense tracking.",
         icon: BarChart3,
     },
-    gohighlevel: {
+    execview: { // Maps to GoHighLevel integration
         name: "GoHighLevel",
         description: "Lead generation and innovative marketing automation.",
         icon: Zap,

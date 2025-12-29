@@ -2,7 +2,7 @@ import { BaseConnector } from "@/lib/api/base";
 import db from "@/lib/db";
 
 export class GoHighLevelConnector extends BaseConnector {
-    serviceName = "GoHighLevel";
+    serviceName = "execview"; // Aliased from gohighlevel
     // private baseUrl = "https://services.leadconnectorhq.com";
 
     async fetchMetrics() {

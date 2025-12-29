@@ -3,12 +3,18 @@ import db from '@/lib/db';
 
 const CONFIGS = {
     clio: {
+        id: process.env.CLIO_CLIENT_ID,
+        secret: process.env.CLIO_CLIENT_SECRET,
         tokenUrl: 'https://app.clio.com/oauth/token',
     },
-    gohighlevel: {
+    execview: { // GoHighLevel
+        id: process.env.GOHIGHLEVEL_CLIENT_ID,
+        secret: process.env.GOHIGHLEVEL_CLIENT_SECRET,
         tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
     },
     quickbooks: {
+        id: process.env.QUICKBOOKS_CLIENT_ID,
+        secret: process.env.QUICKBOOKS_CLIENT_SECRET,
         tokenUrl: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
     }
 };

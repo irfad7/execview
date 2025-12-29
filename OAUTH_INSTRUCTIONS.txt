@@ -8,10 +8,14 @@ This document provides step-by-step instructions for obtaining the Client IDs an
 For all services, you will need to provide a **Redirect URI** (also called Callback URL). 
 Format: `[YOUR_APP_URL]/api/auth/callback/[service_id]`
 
-If testing locally:
-- Clio: `http://localhost:3000/api/auth/callback/clio`
-- GoHighLevel: `http://localhost:3000/api/auth/callback/gohighlevel`
-- QuickBooks: `http://localhost:3000/api/auth/callback/quickbooks`
+**Production URL**: `https://execview.vercel.app`
+
+Redirect URIs:
+- Clio: `https://execview.vercel.app/api/auth/callback/clio`
+- GoHighLevel: `https://execview.vercel.app/api/auth/callback/execview`
+- QuickBooks: `https://execview.vercel.app/api/auth/callback/quickbooks`
+
+(For local testing, replace `https://execview.vercel.app` with `http://localhost:3000`)
 
 ---
 
@@ -28,7 +32,10 @@ If testing locally:
 - Client Secret (Application Secret)
 
 **Required Scopes:**
-- `openid` (Standard for identity)
+- `openid` (Identity)
+- `matters:read` (To fetch case details)
+- `contacts:read` (To fetch client details)
+- `bills:read` (Optional, for billing data)
 
 ---
 
@@ -38,7 +45,7 @@ If testing locally:
 2. Log in with your Agency or Admin account.
 3. Go to **My Apps** and click **Create App**.
 4. Fill in the app details.
-5. In the **Redirect URI** field, enter your callback URL.
+5. In the **Redirect URI** field, enter `https://execview.vercel.app/api/auth/callback/execview`.
 6. Under **Scopes**, select the permissions listed below.
 7. Save/Create.
 
@@ -51,6 +58,12 @@ If testing locally:
 - `contacts.write`
 - `opportunities.readonly`
 - `calendars.readonly`
+- `locations/customFields.readonly`
+- `locations/customFields.write`
+- `locations/customValues.readonly`
+- `locations/customValues.write`
+- `locations/tasks.readonly`
+- `locations/tasks.write`
 
 ---
 
@@ -89,5 +102,5 @@ GOHIGHLEVEL_CLIENT_SECRET=your_secret
 QUICKBOOKS_CLIENT_ID=your_id
 QUICKBOOKS_CLIENT_SECRET=your_secret
 
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_BASE_URL=https://execview.vercel.app
 ```

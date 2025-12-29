@@ -4,12 +4,12 @@ const CONFIGS = {
     clio: {
         authUrl: 'https://app.clio.com/oauth/authorize',
         tokenUrl: 'https://app.clio.com/oauth/token',
-        scopes: 'openid', // Adjust based on needs
+        scopes: 'openid matters:read contacts:read bills:read tasks:read documents:read users:read calendars:read communications:read',
     },
-    gohighlevel: {
+    execview: { // GoHighLevel (aliased to execview for URL compliance)
         authUrl: 'https://marketplace.gohighlevel.com/oauth/chooselocation',
         tokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
-        scopes: 'contacts.readonly contacts.write opportunities.readonly calendars.readonly',
+        scopes: 'contacts.readonly contacts.write opportunities.readonly calendars.readonly locations/customFields.readonly locations/customFields.write locations/customValues.readonly locations/customValues.write locations/tasks.readonly locations/tasks.write',
     },
     quickbooks: {
         authUrl: 'https://appcenter.intuit.com/connect/oauth2',
