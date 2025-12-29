@@ -33,7 +33,7 @@ export function Sidebar() {
     const { theme, toggleTheme } = useTheme();
     const { logout, isAuthenticated } = useAuth();
 
-    if (!isAuthenticated) return null;
+    if (!isAuthenticated || pathname === "/login") return null;
 
     return (
         <aside className="w-72 bg-sidebar h-screen flex flex-col border-r border-sidebar-border sticky top-0 transition-colors duration-300">

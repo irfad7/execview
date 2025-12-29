@@ -28,8 +28,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated && pathname !== "/login") {
-            router.push("/login");
+        if (!isLoading) {
+            if (!isAuthenticated && pathname !== "/login") {
+                router.push("/login");
+            } else if (isAuthenticated && pathname === "/login") {
+                router.push("/");
+            }
         }
     }, [isAuthenticated, isLoading, pathname, router]);
 

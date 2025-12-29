@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { FirmMetrics } from "./types";
-import { getMockData } from "./mockData";
+import { getLiveDashboardData } from "./dbActions";
 
 interface DashboardState {
     data: FirmMetrics | null;
@@ -22,13 +22,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const result = await getMockData();
+                const result = await getLiveDashboardData();
                 setState({
                     data: result,
                     loading: false,
                     error: null,
                 });
             } catch (err) {
+                console.error("Failed to fetch live data:", err);
                 setState({
                     data: null,
                     loading: false,

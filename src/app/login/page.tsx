@@ -13,7 +13,9 @@ export default function LoginPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const success = login(password);
-        if (!success) {
+        if (success) {
+            window.location.href = "/"; // Force full reload to ensure verified state
+        } else {
             setError(true);
             setTimeout(() => setError(false), 2000);
         }

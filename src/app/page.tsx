@@ -18,12 +18,32 @@ import { PageTransition, AnimatedCard } from "@/lib/animations";
 export default function OverviewPage() {
     const { data, loading } = useDashboard();
 
-    if (loading || !data) {
+    if (loading) {
         return (
             <div className="flex-1 flex flex-col">
-                <Header title="Law Firm Dashboard" />
+                <Header title="ExecView Dashboard" />
                 <div className="p-8">
                     <div className="h-64 bg-zinc-800 animate-pulse rounded-2xl" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!data) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="ExecView Dashboard" />
+                <div className="p-8 flex flex-col items-center justify-center h-full text-center space-y-4">
+                    <div className="p-4 bg-zinc-800 rounded-full">
+                        <ArrowUpRight className="w-8 h-8 text-zinc-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white">No Data Available</h2>
+                    <p className="text-zinc-400 max-w-md">
+                        Connect your integrations to start seeing real-time insights from your firm's data.
+                    </p>
+                    <a href="/integrations" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20">
+                        Connect Integrations
+                    </a>
                 </div>
             </div>
         );

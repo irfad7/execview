@@ -1,6 +1,7 @@
 "use server";
 
 import db, { initDb } from "./db";
+import { FirmMetrics } from "./types";
 
 export async function ensureDb() {
     initDb();
@@ -15,9 +16,20 @@ export async function updateSyncStatus(status: string, errorMessage?: string) {
         .run(status, errorMessage || null);
 }
 
-export async function getCachedData() {
+// Replaces getMockData
+export async function getLiveDashboardData(): Promise<FirmMetrics | null> {
     const row = db.prepare("SELECT data FROM dashboard_cache WHERE id = 1").get() as { data: string } | undefined;
-    return row ? JSON.parse(row.data) : null;
+    if (!row) return null;
+    try {
+        return JSON.parse(row.data) as FirmMetrics;
+    } catch (e) {
+        console.error("Failed to parse dashboard cache", e);
+        return null;
+    }
+}
+
+export async function getCachedData() {
+    return getLiveDashboardData();
 }
 
 export async function setCachedData(data: any) {
@@ -71,4 +83,3 @@ export async function updateSystemSetting(key: string, value: any) {
     db.prepare("INSERT OR REPLACE INTO system_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
         .run(key, JSON.stringify(value));
 }
-
