@@ -38,8 +38,8 @@ export async function GET(
     }
 
     try {
-        const clientId = process.env[`${service.toUpperCase()}_CLIENT_ID`];
-        const clientSecret = process.env[`${service.toUpperCase()}_CLIENT_SECRET`];
+        const clientId = config.id;
+        const clientSecret = config.secret;
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         const redirectUri = `${baseUrl}/api/auth/callback/${service}`;
 
