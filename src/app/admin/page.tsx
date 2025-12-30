@@ -157,98 +157,99 @@ export default function AdminPage() {
                             </div>
                         </>
                     ) : activeTab === "mapping" ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <FieldMapper
                                 title="Clio Case Fields"
                                 service="clio"
                                 fields={clioFields}
+                                options={["display_number", "description", "status", "client.name", "created_at", "updated_at", "Custom Field: Discovery Received", "Custom Field: Plea Offer Received"]}
                                 onSave={(m) => handleSaveMapping("clio", m)}
                             />
                             <FieldMapper
                                 title="GoHighLevel Metrics"
                                 service="execview"
                                 fields={ghlFields}
+                                options={["leads", "opportunities", "contact.name", "pipeline.stage", "status", "monetaryValue", "createdAt"]}
                                 onSave={(m) => handleSaveMapping("execview", m)}
                             />
                         </div>
-                    ) : (
-                        <AnimatedCard delay={0.1}>
-                            <div className="glass-card max-w-2xl mx-auto">
-                                <div className="p-6 border-b border-sidebar-border bg-white/5 flex items-center justify-between">
-                                    <h3 className="font-bold text-foreground flex items-center gap-2">
-                                        <Share2 className="w-4 h-4 text-primary" />
-                                        Automated Email Reports
-                                    </h3>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${schedule.enabled ? 'text-success' : 'text-sidebar-foreground'}`}>
-                                            {schedule.enabled ? 'Active' : 'Inactive'}
-                                        </span>
-                                        <button
-                                            onClick={() => handleUpdateSchedule({ ...schedule, enabled: !schedule.enabled })}
-                                            className={`w-10 h-5 rounded-full transition-all relative ${schedule.enabled ? 'bg-primary' : 'bg-sidebar-accent'}`}
-                                        >
-                                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${schedule.enabled ? 'right-1' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
+            ) : (
+            <AnimatedCard delay={0.1}>
+                <div className="glass-card max-w-2xl mx-auto">
+                    <div className="p-6 border-b border-sidebar-border bg-white/5 flex items-center justify-between">
+                        <h3 className="font-bold text-foreground flex items-center gap-2">
+                            <Share2 className="w-4 h-4 text-primary" />
+                            Automated Email Reports
+                        </h3>
+                        <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${schedule.enabled ? 'text-success' : 'text-sidebar-foreground'}`}>
+                                {schedule.enabled ? 'Active' : 'Inactive'}
+                            </span>
+                            <button
+                                onClick={() => handleUpdateSchedule({ ...schedule, enabled: !schedule.enabled })}
+                                className={`w-10 h-5 rounded-full transition-all relative ${schedule.enabled ? 'bg-primary' : 'bg-sidebar-accent'}`}
+                            >
+                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${schedule.enabled ? 'right-1' : 'left-1'}`} />
+                            </button>
+                        </div>
+                    </div>
 
-                                <div className="p-8 space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-sidebar-foreground uppercase tracking-widest">Delivery Day</label>
-                                            <select
-                                                value={schedule.day}
-                                                onChange={(e) => handleUpdateSchedule({ ...schedule, day: e.target.value })}
-                                                className="w-full bg-sidebar-background border border-sidebar-border rounded-xl px-4 py-3 text-sm text-foreground outline-none font-bold focus:ring-1 focus:ring-primary transition-all"
-                                            >
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
-                                                    <option key={d}>{d}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-sidebar-foreground uppercase tracking-widest">Preferred Time</label>
-                                            <input
-                                                type="time"
-                                                value={schedule.time}
-                                                onChange={(e) => handleUpdateSchedule({ ...schedule, time: e.target.value })}
-                                                className="w-full bg-sidebar-background border border-sidebar-border rounded-xl px-4 py-3 text-sm text-foreground outline-none font-bold focus:ring-1 focus:ring-primary transition-all"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl">
-                                        <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-                                            <CheckCircle className="w-4 h-4 text-primary" />
-                                            Report Contents
-                                        </h4>
-                                        <ul className="space-y-2 text-xs text-sidebar-foreground font-medium">
-                                            <li className="flex items-center gap-2">
-                                                <div className="w-1 h-1 rounded-full bg-primary" /> Comprehensive weekly performance PDF
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <div className="w-1 h-1 rounded-full bg-primary" /> Summary of leads and consultations
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <div className="w-1 h-1 rounded-full bg-primary" /> Financial reconciliation overview
-                                            </li>
-                                        </ul>
-                                    </div>
-
-                                    <button
-                                        className="w-full py-4 bg-sidebar-accent hover:bg-sidebar-foreground/10 text-foreground text-sm font-bold rounded-xl transition-all border border-sidebar-border flex items-center justify-center gap-2"
-                                        onClick={() => alert("A test email has been queued! Check logs in a few moments.")}
-                                    >
-                                        Send Test Report Now
-                                    </button>
-                                </div>
+                    <div className="p-8 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-sidebar-foreground uppercase tracking-widest">Delivery Day</label>
+                                <select
+                                    value={schedule.day}
+                                    onChange={(e) => handleUpdateSchedule({ ...schedule, day: e.target.value })}
+                                    className="w-full bg-sidebar-background border border-sidebar-border rounded-xl px-4 py-3 text-sm text-foreground outline-none font-bold focus:ring-1 focus:ring-primary transition-all"
+                                >
+                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => (
+                                        <option key={d}>{d}</option>
+                                    ))}
+                                </select>
                             </div>
-                        </AnimatedCard>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-sidebar-foreground uppercase tracking-widest">Preferred Time</label>
+                                <input
+                                    type="time"
+                                    value={schedule.time}
+                                    onChange={(e) => handleUpdateSchedule({ ...schedule, time: e.target.value })}
+                                    className="w-full bg-sidebar-background border border-sidebar-border rounded-xl px-4 py-3 text-sm text-foreground outline-none font-bold focus:ring-1 focus:ring-primary transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl">
+                            <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-primary" />
+                                Report Contents
+                            </h4>
+                            <ul className="space-y-2 text-xs text-sidebar-foreground font-medium">
+                                <li className="flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" /> Comprehensive weekly performance PDF
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" /> Summary of leads and consultations
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-primary" /> Financial reconciliation overview
+                                </li>
+                            </ul>
+                        </div>
+
+                        <button
+                            className="w-full py-4 bg-sidebar-accent hover:bg-sidebar-foreground/10 text-foreground text-sm font-bold rounded-xl transition-all border border-sidebar-border flex items-center justify-center gap-2"
+                            onClick={() => alert("A test email has been queued! Check logs in a few moments.")}
+                        >
+                            Send Test Report Now
+                        </button>
+                    </div>
+                </div>
+            </AnimatedCard>
                     )}
-                </main>
-            </div>
-        </PageTransition>
+        </main>
+            </div >
+        </PageTransition >
     );
 }
 

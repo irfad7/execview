@@ -7,14 +7,16 @@ import { ArrowRight, Save } from "lucide-react";
 interface FieldMappingProps {
     service: string;
     title?: string;
+    options?: string[];
     fields: { id: string; label: string; currentMapping?: string }[];
     onSave: (mappings: Record<string, string>) => void;
 }
 
-export function FieldMapper({ service, title, fields, onSave }: FieldMappingProps) {
+export function FieldMapper({ service, title, options = [], fields, onSave }: FieldMappingProps) {
     const [mappings, setMappings] = useState<Record<string, string>>(
         Object.fromEntries(fields.map(f => [f.id, f.currentMapping || ""]))
     );
+    const datalistId = `datalist-${service.replace(/\s+/g, '-')}`;
 
     return (
         <div className="space-y-4">
@@ -28,6 +30,12 @@ export function FieldMapper({ service, title, fields, onSave }: FieldMappingProp
                 </button>
             </div>
 
+            {options.length > 0 && (
+                <datalist id={datalistId}>
+                    {options.map(opt => <option key={opt} value={opt} />)}
+                </datalist>
+            )}
+
             <div className="space-y-3">
                 {fields.map((field) => (
                     <div key={field.id} className="flex items-center gap-4 bg-sidebar-accent/50 p-3 rounded-xl border border-sidebar-border">
@@ -40,9 +48,10 @@ export function FieldMapper({ service, title, fields, onSave }: FieldMappingProp
                             <p className="text-[10px] text-sidebar-foreground uppercase tracking-widest font-bold">Source API Field</p>
                             <input
                                 type="text"
+                                list={options.length > 0 ? datalistId : undefined}
                                 value={mappings[field.id]}
                                 onChange={(e) => setMappings(prev => ({ ...prev, [field.id]: e.target.value }))}
-                                placeholder="e.g. custom_field_123"
+                                placeholder={options.length > 0 ? "Select or type field name..." : "e.g. custom_field_123"}
                                 className="w-full bg-sidebar-background border-none rounded px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-primary outline-none"
                             />
                         </div>
