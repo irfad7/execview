@@ -38,7 +38,7 @@ export default function BookkeepingPage() {
                         <AnimatedCard delay={0.1}>
                             <MetricCard
                                 title="Closed Cases"
-                                value={data.qb.closedCasesWeekly}
+                                value={data.qb?.closedCasesWeekly || 0}
                                 trend="up"
                                 trendValue="12%"
                                 icon={<CheckCircle2 className="w-4 h-4 text-primary" />}
@@ -48,7 +48,7 @@ export default function BookkeepingPage() {
                         <AnimatedCard delay={0.2}>
                             <MetricCard
                                 title="Total Payments Collected"
-                                value={`$${data.qb.paymentsCollectedWeekly.toLocaleString()}`}
+                                value={`$${(data.qb?.paymentsCollectedWeekly || 0).toLocaleString()}`}
                                 icon={<CircleDollarSign className="w-4 h-4 text-success" />}
                                 subValue="Weekly Total"
                             />
@@ -56,7 +56,7 @@ export default function BookkeepingPage() {
                         <AnimatedCard delay={0.3}>
                             <MetricCard
                                 title="Avg Case Value"
-                                value={`$${data.qb.avgCaseValue.toLocaleString()}`}
+                                value={`$${(data.qb?.avgCaseValue || 0).toLocaleString()}`}
                                 trend="neutral"
                                 trendValue="0%"
                                 icon={<TrendingUp className="w-4 h-4 text-warning" />}
@@ -65,7 +65,7 @@ export default function BookkeepingPage() {
                         <AnimatedCard delay={0.4}>
                             <MetricCard
                                 title="YTD Fees Collected"
-                                value={`$${data.qb.revenueYTD.toLocaleString()}`}
+                                value={`$${(data.qb?.revenueYTD || 0).toLocaleString()}`}
                                 icon={<Calendar className="w-4 h-4 text-primary" />}
                             />
                         </AnimatedCard>
@@ -91,7 +91,7 @@ export default function BookkeepingPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-sidebar-border">
-                                                {data.qb.recentCollections.map((payment) => (
+                                                {(data.qb?.recentCollections || []).map((payment) => (
                                                     <tr key={payment.id} className="hover:bg-sidebar-accent/50 transition-colors group">
                                                         <td className="px-6 py-4">
                                                             <span className="text-sm font-bold text-foreground">{payment.clientName}</span>

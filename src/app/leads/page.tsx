@@ -35,13 +35,10 @@ export default function LeadsPage() {
         );
     }
 
-    const leads = [
-        { id: 1, owner: "Mike Tyson", lead: "Sarah J.", date: "2025-12-22", timeOnPhone: "12m", stage: "Consult Scheduled", source: "Google LSA" },
-        { id: 2, owner: "Harvey S.", lead: "Robert D.", date: "2025-12-23", timeOnPhone: "8m", stage: "New Lead", source: "Website" },
-        { id: 3, owner: "Jessica P.", lead: "Amanda W.", date: "2025-12-21", timeOnPhone: "45m", stage: "Retainer Sent", source: "Referral" },
-        { id: 4, owner: "Mike Tyson", lead: "John B.", date: "2025-12-23", timeOnPhone: "15m", stage: "Qualifying", source: "Social Media" },
-        { id: 5, owner: "Harvey S.", lead: "David K.", date: "2025-12-20", timeOnPhone: "25m", stage: "Lost", source: "Website" },
-    ];
+    // Use real opportunity feed or empty array. 
+    // If you want fallback dummy data for demo purposes if ghl is empty, you can add logic here.
+    // For now, let's use real data to fix "not getting it right"
+    const leads = data.ghl?.opportunityFeed || [];
 
     return (
         <div className="flex-1 flex flex-col">
@@ -66,18 +63,18 @@ export default function LeadsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
                             title="Leads This Week"
-                            value={data.ghl.leadsWeekly}
+                            value={data.ghl?.leadsWeekly || 0}
                             icon={<Users className="w-4 h-4 text-primary" />}
                         />
                         <MetricCard
                             title="Avg Time on Phone"
-                            value="18m"
+                            value={data.ghl?.avgTimeOnPhone || "0m"}
                             icon={<Phone className="w-4 h-4 text-success" />}
                             subValue="Per qualified lead"
                         />
                         <MetricCard
                             title="Consultations"
-                            value={data.ghl.consultsScheduled}
+                            value={data.ghl?.consultsScheduled || 0}
                             icon={<Calendar className="w-4 h-4 text-warning" />}
                             subValue="For the current week"
                         />
@@ -115,10 +112,10 @@ export default function LeadsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border text-sm">
-                                    {leads.map((lead) => (
+                                    {leads.map((lead: any) => (
                                         <tr key={lead.id} className="hover:bg-sidebar-accent/20 transition-colors group">
                                             <td className="px-6 py-4">
-                                                <div className="font-medium text-white group-hover:text-primary transition-colors">{lead.lead}</div>
+                                                <div className="font-medium text-white group-hover:text-primary transition-colors">{lead.contactName || lead.lead}</div>
                                             </td>
                                             <td className="px-6 py-4 text-zinc-400">
                                                 <div className="flex items-center gap-2">

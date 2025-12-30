@@ -34,12 +34,13 @@ export default function CasesPage() {
         );
     }
 
-    const casesWithNoDiscovery = data.clio.filter(c => !c.discoveryReceived);
-    const casesWithNoPlea = data.clio.filter(c => !c.pleaOfferReceived);
-    const totalOutstanding = data.clio.reduce((acc, c) => acc + c.outstandingBalance, 0);
+    const clioData = data.clio || [];
+    const casesWithNoDiscovery = clioData.filter(c => !c.discoveryReceived);
+    const casesWithNoPlea = clioData.filter(c => !c.pleaOfferReceived);
+    const totalOutstanding = clioData.reduce((acc, c) => acc + c.outstandingBalance, 0);
 
-    const discoveryPercentage = Math.round((casesWithNoDiscovery.length / data.clio.length) * 100);
-    const pleaPercentage = Math.round((casesWithNoPlea.length / data.clio.length) * 100);
+    const discoveryPercentage = clioData.length > 0 ? Math.round((casesWithNoDiscovery.length / clioData.length) * 100) : 0;
+    const pleaPercentage = clioData.length > 0 ? Math.round((casesWithNoPlea.length / clioData.length) * 100) : 0;
 
     const isSoon = (dateStr?: string) => {
         if (!dateStr) return false;
@@ -74,7 +75,7 @@ export default function CasesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
                             title="Weekly Open Cases"
-                            value={data.clio.length}
+                            value={clioData.length}
                             icon={<Briefcase className="w-4 h-4" />}
                             trend="up"
                             trendValue="12%"
@@ -124,7 +125,7 @@ export default function CasesPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border">
-                                    {data.clio.map((c) => (
+                                    {clioData.map((c) => (
                                         <tr key={c.id} className="hover:bg-sidebar-accent/30 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-foreground group-hover:text-primary transition-colors">{c.name}</div>
