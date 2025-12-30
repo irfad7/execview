@@ -9,9 +9,9 @@ import { getProfile, updateProfile } from "@/lib/dbActions";
 import Link from "next/link";
 
 export default function ProfilePage() {
-    const [profile, setProfile] = useState({
+    const [profile, setProfile] = useState<{ name: string; firmName: string; email: string; phone: string }>({
         name: "",
-        firm_name: "",
+        firmName: "",
         email: "",
         phone: ""
     });
@@ -19,7 +19,14 @@ export default function ProfilePage() {
 
     useEffect(() => {
         getProfile().then(p => {
-            if (p) setProfile(p);
+            if (p) {
+                setProfile({
+                    name: p.name || "",
+                    firmName: p.firmName || "",
+                    email: p.email || "",
+                    phone: p.phone || ""
+                });
+            }
         });
     }, []);
 
@@ -72,8 +79,8 @@ export default function ProfilePage() {
                                             <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sidebar-foreground" />
                                             <input
                                                 type="text"
-                                                value={profile.firm_name}
-                                                onChange={e => setProfile({ ...profile, firm_name: e.target.value })}
+                                                value={profile.firmName}
+                                                onChange={e => setProfile({ ...profile, firmName: e.target.value })}
                                                 className="w-full bg-sidebar-background border border-sidebar-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
                                                 placeholder="e.g. Acme Law"
                                                 required

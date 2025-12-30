@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/authContext";
 
 export function Header({ title }: { title: string }) {
     const [showNotifications, setShowNotifications] = useState(false);
@@ -12,6 +13,7 @@ export function Header({ title }: { title: string }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [showSearchResults, setShowSearchResults] = useState(false);
     const router = useRouter();
+    const { signOut } = useAuth();
 
     const notificationRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
@@ -203,7 +205,10 @@ export function Header({ title }: { title: string }) {
                                         <UserCircle className="w-4 h-4" /> My Profile
                                     </Link>
                                     <div className="h-px bg-sidebar-border my-1" />
-                                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-all font-bold">
+                                    <button
+                                        onClick={() => signOut()}
+                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-all font-bold"
+                                    >
                                         <LogOut className="w-4 h-4" /> Sign Out
                                     </button>
                                 </div>

@@ -31,7 +31,7 @@ const menuItems = [
 export function Sidebar() {
     const pathname = usePathname();
     const { theme, toggleTheme } = useTheme();
-    const { logout, isAuthenticated } = useAuth();
+    const { signOut, isAuthenticated } = useAuth();
 
     if (!isAuthenticated || pathname === "/login") return null;
 
@@ -80,7 +80,7 @@ export function Sidebar() {
                 </button>
 
                 <button
-                    onClick={logout}
+                    onClick={() => signOut()}
                     className="flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-sidebar-foreground hover:bg-error/10 hover:text-error transition-all duration-200 font-semibold text-sm"
                 >
                     <LogOut className="w-5 h-5" />

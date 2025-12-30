@@ -26,10 +26,10 @@ export default async function IntegrationsPage() {
     // Helper to check status
     const getStatus = (serviceKey: string) => {
         const config = configs.find((c: any) => c.service === serviceKey);
-        if (config && config.access_token) {
+        if (config && config.accessToken) {
             return {
                 status: "connected",
-                lastSync: new Date(config.updated_at).toLocaleString()
+                lastSync: new Date(config.updatedAt).toLocaleString()
             };
         }
         return {

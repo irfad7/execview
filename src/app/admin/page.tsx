@@ -133,11 +133,11 @@ export default function AdminPage() {
                                     <div key={config.service} className="group relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-bold capitalize">{config.service === 'execview' ? 'GoHighLevel' : config.service}</h3>
-                                            <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.access_token ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                                                {config.access_token ? 'Connected' : 'Disconnected'}
+                                            <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.accessToken ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                                                {config.accessToken ? 'Connected' : 'Disconnected'}
                                             </div>
                                         </div>
-                                        {config.access_token ? (
+                                        {config.accessToken ? (
                                             <button
                                                 onClick={() => handleDisconnect(config.service)}
                                                 className="w-full py-2 bg-error/10 hover:bg-error/20 text-error rounded-lg text-xs font-bold transition-all"
