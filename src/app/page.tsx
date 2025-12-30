@@ -93,7 +93,7 @@ export default function OverviewPage() {
                         <AnimatedCard delay={0.2}>
                             <MetricCard
                                 title="YTD Revenue"
-                                value={`$${data.qb.revenueYTD.toLocaleString()}`}
+                                value={`$${(data.qb?.revenueYTD || 0).toLocaleString()}`}
                                 trend="up"
                                 trendValue="24%"
                                 icon={<TrendingUp className="w-4 h-4" />}
@@ -109,7 +109,7 @@ export default function OverviewPage() {
                         <AnimatedCard delay={0.4}>
                             <MetricCard
                                 title="Weekly Leads"
-                                value={data.ghl.leadsWeekly}
+                                value={data.ghl?.leadsWeekly || 0}
                                 trend="up"
                                 trendValue="8%"
                                 icon={<Users className="w-4 h-4" />}
@@ -134,7 +134,7 @@ export default function OverviewPage() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    {data.clio.filter(c => !c.discoveryReceived || !c.pleaOfferReceived).slice(0, 3).map((item) => (
+                                    {(data.clio || []).filter(c => !c.discoveryReceived || !c.pleaOfferReceived).slice(0, 3).map((item) => (
                                         <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group">
                                             <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error">
                                                 <Clock className="w-5 h-5" />

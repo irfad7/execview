@@ -32,7 +32,8 @@ export default function MetricsPage() {
         );
     }
 
-    const progressPercentage = (data.qb.revenueYTD / PROGRESS_GOAL) * 100;
+    const revenueYTD = data.qb?.revenueYTD || 0;
+    const progressPercentage = (revenueYTD / PROGRESS_GOAL) * 100;
 
     return (
         <PageTransition>
@@ -84,11 +85,11 @@ export default function MetricsPage() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="p-4 bg-sidebar-accent/50 rounded-xl border border-sidebar-border">
                                                         <div className="text-sidebar-foreground text-xs mb-1 font-medium">Weekly Total Collected</div>
-                                                        <div className="text-foreground font-bold text-lg">${data.qb.paymentsCollectedWeekly.toLocaleString()}</div>
+                                                        <div className="text-foreground font-bold text-lg">${(data.qb?.paymentsCollectedWeekly || 0).toLocaleString()}</div>
                                                     </div>
                                                     <div className="p-4 bg-sidebar-accent/50 rounded-xl border border-sidebar-border">
                                                         <div className="text-sidebar-foreground text-xs mb-1 font-medium">Avg Case Value</div>
-                                                        <div className="text-foreground font-bold text-lg">${data.qb.avgCaseValue.toLocaleString()}</div>
+                                                        <div className="text-foreground font-bold text-lg">${(data.qb?.avgCaseValue || 0).toLocaleString()}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -105,13 +106,13 @@ export default function MetricsPage() {
                                         <Target className="w-5 h-5 text-primary" />
                                     </div>
                                     <div className="py-6">
-                                        <div className="text-5xl font-black text-foreground mb-2 font-display">{data.ghl.roi}x</div>
+                                        <div className="text-5xl font-black text-foreground mb-2 font-display">{data.ghl?.roi || 0}x</div>
                                         <div className="text-sm text-sidebar-foreground font-medium">Return on Current Ad Spend</div>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex justify-between text-xs font-semibold">
                                             <span className="text-sidebar-foreground">Conversion Rate</span>
-                                            <span className="text-success">{(data.ghl.conversionRate * 100).toFixed(1)}%</span>
+                                            <span className="text-success">{((data.ghl?.conversionRate || 0) * 100).toFixed(1)}%</span>
                                         </div>
                                         <div className="h-1.5 bg-sidebar-accent rounded-full overflow-hidden">
                                             <div className="h-full bg-success w-[15%]" />
@@ -134,7 +135,7 @@ export default function MetricsPage() {
                                     </div>
 
                                     <div className="space-y-6">
-                                        {data.ghl.leadSources.map((source, i) => (
+                                        {(data.ghl?.leadSources || []).map((source, i) => (
                                             <div key={source.source} className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-foreground font-bold">{source.source}</span>
@@ -160,7 +161,7 @@ export default function MetricsPage() {
                                 <AnimatedCard delay={0.4}>
                                     <MetricCard
                                         title="Weekly Leads"
-                                        value={data.ghl.leadsWeekly}
+                                        value={data.ghl?.leadsWeekly || 0}
                                         trend="up"
                                         trendValue="12%"
                                         icon={<Users className="w-4 h-4" />}
@@ -169,7 +170,7 @@ export default function MetricsPage() {
                                 <AnimatedCard delay={0.5}>
                                     <MetricCard
                                         title="Consultations"
-                                        value={data.ghl.consultationsWeekly}
+                                        value={data.ghl?.consultationsWeekly || 0}
                                         trend="up"
                                         trendValue="5%"
                                         icon={<BarChart className="w-4 h-4 text-warning" />}
@@ -180,7 +181,7 @@ export default function MetricsPage() {
                                         <div className="glass-card p-6 flex items-center justify-between bg-gradient-to-r from-primary/10 to-transparent">
                                             <div>
                                                 <div className="text-sidebar-foreground text-xs mb-1 font-bold uppercase tracking-wider">Avg Time on Phone</div>
-                                                <div className="text-2xl font-black text-foreground font-display">{data.ghl.avgTimeOnPhone}</div>
+                                                <div className="text-2xl font-black text-foreground font-display">{data.ghl?.avgTimeOnPhone || "0m"}</div>
                                             </div>
                                             <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
                                                 <TrendingUp className="w-6 h-6" />

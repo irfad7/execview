@@ -158,7 +158,18 @@ export default function AdminPage() {
                         </>
                     ) : activeTab === "mapping" ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* ... Field mappers ... */}
+                            <FieldMapper
+                                title="Clio Case Fields"
+                                service="clio"
+                                fields={clioFields}
+                                onSave={(m) => handleSaveMapping("clio", m)}
+                            />
+                            <FieldMapper
+                                title="GoHighLevel Metrics"
+                                service="execview"
+                                fields={ghlFields}
+                                onSave={(m) => handleSaveMapping("execview", m)}
+                            />
                         </div>
                     ) : (
                         <AnimatedCard delay={0.1}>
