@@ -97,7 +97,7 @@ export default function BookkeepingPage() {
                                                             <span className="text-sm font-bold text-foreground">{payment.clientName}</span>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className="text-sm font-bold text-success">${payment.amount.toLocaleString()}</span>
+                                                            <span className="text-sm font-bold text-success">${(payment.amount || 0).toLocaleString()}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-sm text-sidebar-foreground font-medium">
                                                             {payment.date}

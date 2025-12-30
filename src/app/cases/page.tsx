@@ -82,7 +82,7 @@ export default function CasesPage() {
                         />
                         <MetricCard
                             title="Outstanding Balance"
-                            value={`$${totalOutstanding.toLocaleString()}`}
+                            value={`$${(totalOutstanding || 0).toLocaleString()}`}
                             icon={<CircleDollarSign className="w-4 h-4" />}
                             trend="down"
                             trendValue="5%"
@@ -172,7 +172,7 @@ export default function CasesPage() {
                                                     "text-sm font-bold",
                                                     c.outstandingBalance > 0 ? "text-foreground" : "text-sidebar-foreground opacity-50"
                                                 )}>
-                                                    ${c.outstandingBalance.toLocaleString()}
+                                                    ${(c.outstandingBalance || 0).toLocaleString()}
                                                 </span>
                                             </td>
                                         </tr>
