@@ -6,11 +6,12 @@ import { ArrowRight, Save } from "lucide-react";
 
 interface FieldMappingProps {
     service: string;
+    title?: string;
     fields: { id: string; label: string; currentMapping?: string }[];
     onSave: (mappings: Record<string, string>) => void;
 }
 
-export function FieldMapper({ service, fields, onSave }: FieldMappingProps) {
+export function FieldMapper({ service, title, fields, onSave }: FieldMappingProps) {
     const [mappings, setMappings] = useState<Record<string, string>>(
         Object.fromEntries(fields.map(f => [f.id, f.currentMapping || ""]))
     );
@@ -18,7 +19,7 @@ export function FieldMapper({ service, fields, onSave }: FieldMappingProps) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-foreground">{service} Field Mapping</h4>
+                <h4 className="text-sm font-bold text-foreground">{title || `${service} Field Mapping`}</h4>
                 <button
                     onClick={() => onSave(mappings)}
                     className="flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-[10px] font-bold rounded-lg hover:bg-primary/90 transition-all"
