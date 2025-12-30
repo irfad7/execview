@@ -22,7 +22,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const result = await getLiveDashboardData();
+                let result = await getLiveDashboardData();
+
+                // If no cache but user is authenticated, try a fresh sync
+                if (!result) {
+                    const { refreshDashboardData } = await import("./dbActions");
+                    // We can try to refresh. If it fails (e.g. no tokens), it might still return default structure
+                    try {
+                        result = await refreshDashboardData();
+                    } catch (syncError) {
+                        console.error("Auto-sync failed:", syncError);
+                        // If sync fails, we still might want to show empty state rather than loading forever
+                    }
+                }
+
                 setState({
                     data: result,
                     loading: false,
