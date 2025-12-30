@@ -43,22 +43,26 @@ export async function GET(
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         const redirectUri = `${baseUrl}/api/auth/callback/${service}`;
 
+        const params = new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+        });
+
+        // GoHighLevel requires credentials in the body
+        if (service === 'execview') {
+            params.append('client_id', clientId || '');
+            params.append('client_secret', clientSecret || '');
+        }
+
         const response = await fetch(config.tokenUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                // Some providers like QuickBooks need Basic Auth, but GHL prefers body.
-                // Sending both usually works, or we can conditionalize. 
-                // For now, let's keep Basic Auth but ALSO add to body for GHL.
+                // QuickBooks requires Basic Auth header and forbids body creds
                 'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
             },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                redirect_uri: redirectUri,
-                client_id: clientId || '',
-                client_secret: clientSecret || '',
-            }),
+            body: params,
         });
 
         const data = await response.json();
