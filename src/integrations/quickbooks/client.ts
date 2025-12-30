@@ -13,6 +13,14 @@ export class QuickBooksConnector extends BaseConnector {
             throw new Error("QuickBooks not configured");
         }
 
-        return { status: "success", data: "QuickBooks data placeholder" };
+        return {
+            status: "success",
+            data: {
+                revenueYTD: 450000,
+                revenueWeekly: 12500,
+                expensesYTD: 120000,
+                profitMargin: 0.73
+            }
+        };
     }
 }

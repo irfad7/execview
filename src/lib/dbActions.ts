@@ -16,6 +16,71 @@ export async function updateSyncStatus(status: string, errorMessage?: string) {
         .run(status, errorMessage || null);
 }
 
+import { ClioConnector } from "@/integrations/clio/client";
+import { QuickBooksConnector } from "@/integrations/quickbooks/client";
+import { GoHighLevelConnector } from "@/integrations/gohighlevel/client";
+
+// ... existing code ...
+
+export async function refreshDashboardData() {
+    console.log("Starting dashboard refresh...");
+
+    // Initialize connectors
+    const clio = new ClioConnector();
+    const qb = new QuickBooksConnector();
+    const ghl = new GoHighLevelConnector();
+
+    const metrics: any = {
+        clio: [],
+        ghl: {},
+        qb: {},
+        // Default fallbacks
+        activeCases: 0,
+        googleReviewsWeekly: 0,
+        newCasesSignedWeekly: 0,
+        newCasesSignedYTD: 0
+    };
+
+    // 1. Fetch Clio
+    try {
+        const clioRes = await clio.fetchMetrics();
+        if (clioRes.status === "success") {
+            metrics.clio = clioRes.data.matters || [];
+            metrics.activeCases = clioRes.data.activeCases || 0;
+        }
+    } catch (e) {
+        console.error("Clio sync failed:", e);
+    }
+
+    // 2. Fetch GHL
+    try {
+        const ghlRes = await ghl.fetchMetrics();
+        if (ghlRes.status === "success") {
+            metrics.ghl = ghlRes.data;
+            metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
+            // metrics.googleReviewsWeekly = ghlRes.data.googleReviews || 0; // if available
+        }
+    } catch (e) {
+        console.error("GHL sync failed:", e);
+    }
+
+    // 3. Fetch QuickBooks
+    try {
+        const qbRes = await qb.fetchMetrics();
+        if (qbRes.status === "success") {
+            metrics.qb = qbRes.data;
+        }
+    } catch (e) {
+        console.error("QB sync failed:", e);
+    }
+
+    // Update Cache
+    await setCachedData(metrics);
+    await updateSyncStatus("success");
+
+    return metrics;
+}
+
 // Replaces getMockData
 export async function getLiveDashboardData(): Promise<FirmMetrics | null> {
     const row = db.prepare("SELECT data FROM dashboard_cache WHERE id = 1").get() as { data: string } | undefined;

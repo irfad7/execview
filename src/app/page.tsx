@@ -66,8 +66,15 @@ export default function OverviewPage() {
                                 </p>
 
                                 <div className="flex gap-4 mt-8">
-                                    <button className="bg-primary hover:bg-primary/80 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
-                                        Quick Action <ArrowUpRight className="w-4 h-4" />
+                                    <button
+                                        onClick={async () => {
+                                            const { refreshDashboardData } = await import('@/lib/dbActions');
+                                            await refreshDashboardData();
+                                            window.location.reload();
+                                        }}
+                                        className="bg-primary hover:bg-primary/80 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                                    >
+                                        Refresh Data <ArrowUpRight className="w-4 h-4" />
                                     </button>
                                     <button className="bg-white/5 hover:bg-white/10 text-white px-6 py-2.5 rounded-xl font-semibold transition-all border border-white/10">
                                         Download Report

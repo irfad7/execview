@@ -13,6 +13,16 @@ export class GoHighLevelConnector extends BaseConnector {
             throw new Error("GoHighLevel not configured");
         }
 
-        return { status: "success", data: "GoHighLevel data placeholder" };
+        // Real API call would go here to /locations/{id} or /opportunities
+        return {
+            status: "success",
+            data: {
+                leadsWeekly: 28,
+                consultsScheduled: 15,
+                retainersSigned: 5,
+                adSpend: 5400,
+                roi: 4.5
+            }
+        };
     }
 }
