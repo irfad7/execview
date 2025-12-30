@@ -57,8 +57,27 @@ export async function refreshDashboardData() {
 
     const metrics: any = {
         clio: [],
-        ghl: {},
-        qb: {},
+        ghl: {
+            leadsWeekly: 0,
+            leadsYTD: 0,
+            consultsScheduled: 0,
+            retainersSigned: 0,
+            adSpend: 0,
+            feesCollected: 0,
+            consultationsWeekly: 0,
+            conversionRate: 0,
+            roi: 0,
+            leadSources: [],
+            opportunityFeed: [],
+            avgTimeOnPhone: "0m"
+        },
+        qb: {
+            revenueYTD: 0,
+            closedCasesWeekly: 0,
+            avgCaseValue: 0,
+            paymentsCollectedWeekly: 0,
+            recentCollections: []
+        },
         // Default fallbacks
         activeCases: 0,
         googleReviewsWeekly: 0,
