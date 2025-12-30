@@ -29,14 +29,19 @@ export async function POST() {
             conversion: 18.5
         };
 
+        if (!profile || !profile.email) {
+            console.error("No profile found for reporting");
+            return NextResponse.json({ message: "No profile found" });
+        }
+
         const mailOptions = {
             from: `"Reporting Portal" <${process.env.EMAIL_USER}>`,
             to: profile.email,
-            subject: `Weekly Performance Report - ${profile.firm_name}`,
+            subject: `Weekly Performance Report - ${profile.firmName || 'My Firm'}`,
             text: `Hello ${profile.name}, your weekly report is attached.`,
             html: `
                 <div style="font-family: sans-serif; background: #09090b; color: white; padding: 40px; border-radius: 20px;">
-                    <h1 style="color: #6366f1;">Weekly Report: ${profile.firm_name}</h1>
+                    <h1 style="color: #6366f1;">Weekly Report: ${profile.firmName || 'My Firm'}</h1>
                     <p>Hello ${profile.name},</p>
                     <p>Your performance report for this week is ready.</p>
                     <ul>
