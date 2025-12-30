@@ -74,6 +74,6 @@ export async function GET(
         return NextResponse.redirect(new URL('/admin?success=1', request.url));
     } catch (err) {
         console.error('OAuth Callback Error:', err);
-        return NextResponse.redirect(new URL('/admin?error=callback_failed', request.url));
+        return NextResponse.redirect(new URL(`/admin?error=callback_failed&details=${encodeURIComponent(err instanceof Error ? err.message : String(err))}`, request.url));
     }
 }

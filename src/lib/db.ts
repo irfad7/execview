@@ -1,10 +1,29 @@
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 
-const DB_PATH = path.join(process.cwd(), "lawyer_dashboard.db");
-const db = new Database(DB_PATH);
+// Determine DB path
+// On Vercel, we must use /tmp for write access.
+// We start with the committed file (seed) and copy it to /tmp.
+const DB_NAME = "lawyer_dashboard.db";
+let dbPath = path.join(process.cwd(), DB_NAME);
 
-// Initialize schema
+if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+  const tmpPath = path.join("/tmp", DB_NAME);
+  // Always ensure /tmp has the DB file
+  if (!fs.existsSync(tmpPath)) {
+    if (fs.existsSync(dbPath)) {
+      fs.copyFileSync(dbPath, tmpPath);
+    }
+  }
+  dbPath = tmpPath;
+}
+
+const db = new Database(dbPath);
+
+// Initialize schema on every startup to ensure tables exist in the ephemeral DB
+initDb();
+
 export function initDb() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS api_configs (
