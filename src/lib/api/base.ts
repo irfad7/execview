@@ -1,4 +1,5 @@
-import db from "../db"; // Assuming we might want to expose internal DB if needed
+// Decoupled from DB for multi-tenancy
+// Access tokens are passed in from the service layer
 
 export interface OAuthTokens {
     access_token: string;
@@ -8,14 +9,10 @@ export interface OAuthTokens {
 
 export abstract class BaseConnector {
     abstract serviceName: string;
+    protected accessToken: string | null;
 
-    protected async getTokens() {
-        // Fetch from SQLite api_configs
-        return null;
-    }
-
-    protected async saveTokens(tokens: OAuthTokens) {
-        // Save to SQLite api_configs
+    constructor(accessToken?: string | null) {
+        this.accessToken = accessToken || null;
     }
 
     abstract fetchMetrics(): Promise<any>;

@@ -1,15 +1,11 @@
 import { BaseConnector } from "@/lib/api/base";
-import db from "@/lib/db";
 
 export class ClioConnector extends BaseConnector {
     serviceName = "Clio";
     private baseUrl = "https://app.clio.com/api/v4";
 
     async fetchMetrics() {
-        // 1. Get tokens from DB
-        const config = db.prepare("SELECT * FROM api_configs WHERE service = ?").get(this.serviceName) as any;
-
-        if (!config || !config.access_token) {
+        if (!this.accessToken) {
             throw new Error("Clio not configured");
         }
 

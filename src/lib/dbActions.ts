@@ -1,34 +1,59 @@
 "use server";
 
-import db, { initDb } from "./db";
+import prisma from "./prisma";
+import { createClient } from "./supabase/server";
 import { FirmMetrics } from "./types";
 
+// Helper to get current authenticated user
+async function getUser() {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    return user;
+}
+
 export async function ensureDb() {
-    initDb();
+    // No-op for Prisma/Supabase as schema is managed via migrations
 }
 
 export async function getSyncStatus() {
-    return db.prepare("SELECT * FROM sync_status WHERE id = 1").get();
+    const user = await getUser();
+    if (!user) return null;
+    return prisma.syncStatus.findUnique({ where: { userId: user.id } });
 }
 
 export async function updateSyncStatus(status: string, errorMessage?: string) {
-    db.prepare("UPDATE sync_status SET status = ?, last_updated = CURRENT_TIMESTAMP, error_message = ? WHERE id = 1")
-        .run(status, errorMessage || null);
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.syncStatus.upsert({
+        where: { userId: user.id },
+        update: { status, errorMessage, lastUpdated: new Date() },
+        create: { userId: user.id, status, errorMessage, lastUpdated: new Date() }
+    });
 }
 
 import { ClioConnector } from "@/integrations/clio/client";
 import { QuickBooksConnector } from "@/integrations/quickbooks/client";
 import { GoHighLevelConnector } from "@/integrations/gohighlevel/client";
 
-// ... existing code ...
-
 export async function refreshDashboardData() {
-    console.log("Starting dashboard refresh...");
+    const user = await getUser();
+    if (!user) throw new Error("Unauthorized");
 
-    // Initialize connectors
-    const clio = new ClioConnector();
-    const qb = new QuickBooksConnector();
-    const ghl = new GoHighLevelConnector();
+    console.log("Starting dashboard refresh for user:", user.email);
+
+    // Fetch User's API Configs
+    const configs = await prisma.apiConfig.findMany({
+        where: { userId: user.id }
+    });
+
+    const getToken = (service: string) => configs.find(c => c.service === service)?.accessToken;
+
+    // Initialize connectors with tokens
+    const clio = new ClioConnector(getToken('clio'));
+    const qb = new QuickBooksConnector(getToken('quickbooks'));
+    const ghl = new GoHighLevelConnector(getToken('execview'));
 
     const metrics: any = {
         clio: [],
@@ -58,7 +83,6 @@ export async function refreshDashboardData() {
         if (ghlRes.status === "success") {
             metrics.ghl = ghlRes.data;
             metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
-            // metrics.googleReviewsWeekly = ghlRes.data.googleReviews || 0; // if available
         }
     } catch (e) {
         console.error("GHL sync failed:", e);
@@ -81,12 +105,17 @@ export async function refreshDashboardData() {
     return metrics;
 }
 
-// Replaces getMockData
 export async function getLiveDashboardData(): Promise<FirmMetrics | null> {
-    const row = db.prepare("SELECT data FROM dashboard_cache WHERE id = 1").get() as { data: string } | undefined;
-    if (!row) return null;
+    const user = await getUser();
+    if (!user) return null;
+
+    const cache = await prisma.dashboardCache.findUnique({
+        where: { userId: user.id }
+    });
+
+    if (!cache) return null;
     try {
-        return JSON.parse(row.data) as FirmMetrics;
+        return JSON.parse(cache.data) as FirmMetrics;
     } catch (e) {
         console.error("Failed to parse dashboard cache", e);
         return null;
@@ -98,53 +127,159 @@ export async function getCachedData() {
 }
 
 export async function setCachedData(data: any) {
-    db.prepare("INSERT OR REPLACE INTO dashboard_cache (id, data, updated_at) VALUES (1, ?, CURRENT_TIMESTAMP)")
-        .run(JSON.stringify(data));
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.dashboardCache.upsert({
+        where: { userId: user.id },
+        update: { data: JSON.stringify(data), updatedAt: new Date() },
+        create: { userId: user.id, data: JSON.stringify(data) }
+    });
 }
 
 export async function saveFieldMapping(service: string, dashboardField: string, sourceField: string) {
-    const id = `${service}_${dashboardField}`;
-    db.prepare("INSERT OR REPLACE INTO field_mappings (id, service, dashboard_field, source_field) VALUES (?, ?, ?, ?)")
-        .run(id, service, dashboardField, sourceField);
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.fieldMapping.upsert({
+        where: {
+            service_dashboardField_userId: {
+                service,
+                dashboardField,
+                userId: user.id
+            }
+        },
+        update: { sourceField },
+        create: { service, dashboardField, sourceField, userId: user.id }
+    });
 }
 
 export async function getFieldMappings(service: string) {
-    return db.prepare("SELECT * FROM field_mappings WHERE service = ?").all(service) as any[];
+    const user = await getUser();
+    if (!user) return [];
+    return prisma.fieldMapping.findMany({
+        where: { service, userId: user.id }
+    });
 }
 
 export async function getApiConfigs() {
-    return db.prepare("SELECT service, access_token, updated_at FROM api_configs").all() as any[];
+    const user = await getUser();
+    if (!user) return [];
+
+    // Ensure default configs exist for the user (similar to initDb logic)
+    const services = ['clio', 'execview', 'quickbooks'];
+    for (const service of services) {
+        // We only create if not exists, but we need to return all
+        // It's better to upsert or just query and fill gaps.
+        // For simplicity, let's just query. If empty, maybe UI handles it or we seed on signup.
+        // Actually, let's seed on demand if missing logic is preferred,
+        // but UI expects a list. 
+    }
+
+    // Let's lazy-init the rows if they don't exist
+    for (const service of ['clio', 'execview', 'quickbooks']) {
+        const exists = await prisma.apiConfig.findUnique({
+            where: { service_userId: { service, userId: user.id } }
+        });
+        if (!exists) {
+            await prisma.apiConfig.create({
+                data: { service, userId: user.id }
+            });
+        }
+    }
+
+    return prisma.apiConfig.findMany({
+        where: { userId: user.id },
+        select: { service: true, accessToken: true, updatedAt: true }
+    });
 }
 
 export async function disconnectService(service: string) {
-    db.prepare("UPDATE api_configs SET access_token = NULL, refresh_token = NULL, expires_at = NULL WHERE service = ?")
-        .run(service);
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.apiConfig.update({
+        where: { service_userId: { service, userId: user.id } },
+        data: { accessToken: null, refreshToken: null, expiresAt: null }
+    });
 }
 
 export async function getProfile() {
-    return db.prepare("SELECT * FROM profile WHERE id = 1").get() as any;
+    const user = await getUser();
+    if (!user) return null;
+
+    let profile = await prisma.profile.findUnique({ where: { id: user.id } });
+    if (!profile) {
+        // Create default profile
+        profile = await prisma.profile.create({
+            data: {
+                id: user.id,
+                email: user.email,
+                name: 'New User',
+                firmName: 'My Firm'
+            }
+        });
+    }
+    return profile;
 }
 
-export async function updateProfile(data: { name: string, firm_name: string, email: string, phone: string }) {
-    db.prepare("UPDATE profile SET name = ?, firm_name = ?, email = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1")
-        .run(data.name, data.firm_name, data.email, data.phone);
+export async function updateProfile(data: { name: string, firmName: string, email?: string, phone?: string }) {
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.profile.update({
+        where: { id: user.id },
+        data: {
+            name: data.name,
+            firmName: data.firmName, // Note: Prisma model uses camelCase firmName mapping to firm_name
+            phone: data.phone
+        }
+    });
 }
 
 export async function addLog(service: string, level: string, message: string, details?: string) {
-    db.prepare("INSERT INTO logs (service, level, message, details) VALUES (?, ?, ?, ?)")
-        .run(service, level, message, details || null);
+    const user = await getUser();
+    if (!user) return; // Logs require user context or global log table? Let's assume user context.
+
+    await prisma.log.create({
+        data: {
+            service,
+            level,
+            message,
+            details,
+            userId: user.id
+        }
+    });
 }
 
 export async function getLogs(limit: number = 50) {
-    return db.prepare("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?").all(limit) as any[];
+    const user = await getUser();
+    if (!user) return [];
+
+    return prisma.log.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit
+    });
 }
 
 export async function getSystemSetting(key: string) {
-    const row = db.prepare("SELECT value FROM system_settings WHERE key = ?").get(key) as any;
-    return row ? JSON.parse(row.value) : null;
+    const user = await getUser();
+    if (!user) return null;
+
+    const setting = await prisma.systemSetting.findUnique({
+        where: { key_userId: { key, userId: user.id } }
+    });
+    return setting ? JSON.parse(setting.value) : null;
 }
 
 export async function updateSystemSetting(key: string, value: any) {
-    db.prepare("INSERT OR REPLACE INTO system_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-        .run(key, JSON.stringify(value));
+    const user = await getUser();
+    if (!user) return;
+
+    await prisma.systemSetting.upsert({
+        where: { key_userId: { key, userId: user.id } },
+        update: { value: JSON.stringify(value) },
+        create: { key, value: JSON.stringify(value), userId: user.id }
+    });
 }

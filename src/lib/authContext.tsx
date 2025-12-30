@@ -1,65 +1,77 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { User, Session } from "@supabase/supabase-js";
 import { useRouter, usePathname } from "next/navigation";
 
 interface AuthContextType {
+    user: User | null;
+    session: Session | null;
     isAuthenticated: boolean;
-    login: (password: string) => boolean;
-    logout: () => void;
+    loading: boolean;
+    signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const HARDCODED_PASSWORD = "lawyerdashboard";
+const AuthContext = createContext<AuthContextType>({
+    user: null,
+    session: null,
+    isAuthenticated: false,
+    loading: true,
+    signOut: async () => { },
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(null);
+    const [session, setSession] = useState<Session | null>(null);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
     const pathname = usePathname();
+    const supabase = createClient();
 
     useEffect(() => {
-        const auth = localStorage.getItem("isAuthenticated");
-        if (auth === "true") {
-            setIsAuthenticated(true);
-        }
-        setIsLoading(false);
-    }, []);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
 
+            if (event === 'SIGNED_IN') {
+                router.refresh();
+            }
+            if (event === 'SIGNED_OUT') {
+                router.refresh();
+                router.push('/login');
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [router, supabase]);
+
+    const signOut = async () => {
+        await supabase.auth.signOut();
+    };
+
+    // Protected route logic
     useEffect(() => {
-        if (!isLoading) {
-            if (!isAuthenticated && pathname !== "/login") {
-                router.push("/login");
-            } else if (isAuthenticated && pathname === "/login") {
-                router.push("/");
+        if (!loading) {
+            if (!session && pathname !== '/login') {
+                router.push('/login');
+            } else if (session && pathname === '/login') {
+                router.push('/');
             }
         }
-    }, [isAuthenticated, isLoading, pathname, router]);
-
-    const login = (password: string) => {
-        if (password === HARDCODED_PASSWORD) {
-            setIsAuthenticated(true);
-            localStorage.setItem("isAuthenticated", "true");
-            return true;
-        }
-        return false;
-    };
-
-    const logout = () => {
-        setIsAuthenticated(false);
-        localStorage.removeItem("isAuthenticated");
-        router.push("/login");
-    };
+    }, [session, loading, pathname, router]);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-            {!isLoading && children}
+        <AuthContext.Provider value={{ user, session, isAuthenticated: !!session, loading, signOut }}>
+            {children}
         </AuthContext.Provider>
     );
 }
 
-export function useAuth() {
+export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
         throw new Error("useAuth must be used within an AuthProvider");

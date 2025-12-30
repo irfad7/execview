@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ApiConfig {
+  id           String    @id @default(cuid())
+  service      String    @unique
+  clientId     String?   @map("client_id")
+  clientSecret String?   @map("client_secret")
+  accessToken  String?   @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  expiresAt    Int?      @map("expires_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
+  
+  userId       String    @map("user_id") // Link to Supabase Auth User ID
+  
+  @@unique([service, userId]) // Allow multiple users to connect to same service
+}
+
+model FieldMapping {
+  id             String   @id @default(cuid())
+  service        String
+  dashboardField String   @map("dashboard_field")
+  sourceField    String   @map("source_field")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+  
+  userId         String   @map("user_id")
+
+  @@unique([service, dashboardField, userId])
+}
+
+model DashboardCache {
+  id        Int      @id @default(autoincrement()) // Using Int to match legacy, or could switch to UID
+  data      String   @db.Text
+  updatedAt DateTime @default(now()) @map("updated_at")
+  
+  userId    String   @map("user_id")
+  
+  @@unique([userId]) // One cache per user
+}
+
+model SyncStatus {
+  id           Int      @id @default(autoincrement())
+  lastUpdated  DateTime? @map("last_updated")
+  status       String?
+  errorMessage String?   @map("error_message")
+  
+  userId       String   @map("user_id")
+  
+  @@unique([userId])
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  service   String
+  level     String
+  message   String
+  details   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  userId    String   @map("user_id")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @default(now()) @map("updated_at")
+  
+  userId    String   @map("user_id")
+  
+  @@unique([key, userId])
+}
+
+model Profile {
+  id        String   @id @map("id") // Supabase Auth ID
+  name      String?
+  firmName  String?  @map("firm_name")
+  email     String?
+  phone     String?
+  updatedAt DateTime @default(now()) @map("updated_at")
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import prisma from '@/lib/prisma';
+import { createClient } from '@/lib/supabase/server';
 
 const CONFIGS = {
     clio: {
@@ -29,12 +30,20 @@ export async function GET(
     const service = serviceParam.toLowerCase();
     const config = CONFIGS[service as keyof typeof CONFIGS];
 
+    // Authenticate User
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.redirect(new URL('/login?error=unauthorized_callback', request.url));
+    }
+
     if (!code) {
-        return NextResponse.redirect(new URL('/admin?error=no_code', request.url));
+        return NextResponse.redirect(new URL('/integrations?error=no_code', request.url));
     }
 
     if (!config) {
-        return NextResponse.redirect(new URL('/admin?error=unsupported_service', request.url));
+        return NextResponse.redirect(new URL('/integrations?error=unsupported_service', request.url));
     }
 
     try {
@@ -47,9 +56,9 @@ export async function GET(
             grant_type: 'authorization_code',
             code,
             redirect_uri: redirectUri,
+            // For GHL, we might need client_id/secret in body
         });
 
-        // GoHighLevel requires credentials in the body
         if (service === 'execview') {
             params.append('client_id', clientId || '');
             params.append('client_secret', clientSecret || '');
@@ -59,7 +68,7 @@ export async function GET(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                // QuickBooks requires Basic Auth header and forbids body creds
+                // QuickBooks requires Basic Auth, GHL accepts it too mostly (but we send body there)
                 'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
             },
             body: params,
@@ -69,20 +78,39 @@ export async function GET(
 
         if (!response.ok) {
             console.error('Token Exchange Error:', data);
-            return NextResponse.redirect(new URL(`/admin?error=token_exchange_failed&details=${encodeURIComponent(data.error_description || data.error || 'Unknown error')}`, request.url));
+            return NextResponse.redirect(new URL(`/integrations?error=token_exchange_failed&details=${encodeURIComponent(data.error_description || data.error || 'Unknown error')}`, request.url));
         }
 
         const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600);
 
-        db.prepare(`
-            UPDATE api_configs 
-            SET access_token = ?, refresh_token = ?, expires_at = ?
-            WHERE id = ?
-        `).run(data.access_token, data.refresh_token, expiresAt, service);
+        // Update DB via Prisma
+        await prisma.apiConfig.upsert({
+            where: {
+                service_userId: {
+                    service: service, // e.g. 'execview'
+                    userId: user.id
+                }
+            },
+            update: {
+                accessToken: data.access_token,
+                refreshToken: data.refresh_token,
+                expiresAt: expiresAt,
+                updatedAt: new Date()
+            },
+            create: {
+                id: crypto.randomUUID(), // or allow default CUID
+                service: service,
+                userId: user.id,
+                accessToken: data.access_token,
+                refreshToken: data.refresh_token,
+                expiresAt: expiresAt,
+                updatedAt: new Date()
+            }
+        });
 
         return NextResponse.redirect(new URL('/integrations?success=1', request.url));
     } catch (err) {
         console.error('OAuth Callback Error:', err);
-        return NextResponse.redirect(new URL(`/admin?error=callback_failed&details=${encodeURIComponent(err instanceof Error ? err.message : String(err))}`, request.url));
+        return NextResponse.redirect(new URL(`/integrations?error=callback_failed&details=${encodeURIComponent(err instanceof Error ? err.message : String(err))}`, request.url));
     }
 }
