@@ -128,7 +128,33 @@ export default function AdminPage() {
 
                     {activeTab === "connections" ? (
                         <>
-                            {/* ... API configs grid ... */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {apiConfigs.map((config: any) => (
+                                    <div key={config.service} className="group relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-bold capitalize">{config.service === 'execview' ? 'GoHighLevel' : config.service}</h3>
+                                            <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.access_token ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                                                {config.access_token ? 'Connected' : 'Disconnected'}
+                                            </div>
+                                        </div>
+                                        {config.access_token ? (
+                                            <button
+                                                onClick={() => handleDisconnect(config.service)}
+                                                className="w-full py-2 bg-error/10 hover:bg-error/20 text-error rounded-lg text-xs font-bold transition-all"
+                                            >
+                                                Disconnect
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleConnect(config.service)}
+                                                className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition-all"
+                                            >
+                                                Connect Now
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </>
                     ) : activeTab === "mapping" ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

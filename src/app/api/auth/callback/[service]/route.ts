@@ -80,7 +80,7 @@ export async function GET(
             WHERE id = ?
         `).run(data.access_token, data.refresh_token, expiresAt, service);
 
-        return NextResponse.redirect(new URL('/admin?success=1', request.url));
+        return NextResponse.redirect(new URL('/integrations?success=1', request.url));
     } catch (err) {
         console.error('OAuth Callback Error:', err);
         return NextResponse.redirect(new URL(`/admin?error=callback_failed&details=${encodeURIComponent(err instanceof Error ? err.message : String(err))}`, request.url));

@@ -105,9 +105,9 @@ export function initDb() {
   db.prepare("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('reporting_schedule', ?)").run(JSON.stringify({ day: 'Monday', time: '09:00', enabled: false }));
 
   // Initialize API configs if they don't exist
-  const services = ['Clio', 'GoHighLevel', 'QuickBooks'];
+  const services = ['Clio', 'execview', 'QuickBooks'];
   for (const service of services) {
-    db.prepare("INSERT OR IGNORE INTO api_configs (id, service) VALUES (?, ?)").run(service.toLowerCase(), service);
+    db.prepare("INSERT OR IGNORE INTO api_configs (id, service) VALUES (?, ?)").run(service.toLowerCase(), service === 'execview' ? 'ExecView' : service);
   }
 }
 
