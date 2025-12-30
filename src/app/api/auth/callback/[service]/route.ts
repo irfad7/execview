@@ -47,12 +47,17 @@ export async function GET(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                // Some providers like QuickBooks need Basic Auth, but GHL prefers body.
+                // Sending both usually works, or we can conditionalize. 
+                // For now, let's keep Basic Auth but ALSO add to body for GHL.
                 'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`
             },
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code,
                 redirect_uri: redirectUri,
+                client_id: clientId || '',
+                client_secret: clientSecret || '',
             }),
         });
 
