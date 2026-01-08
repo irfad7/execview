@@ -22,13 +22,29 @@ async function main() {
 
     // Create default profile
     await prisma.profile.upsert({
-        where: { id: user.id },
+        where: { userId: user.id },
         update: {},
         create: {
-            id: user.id,
+            userId: user.id,
             name: 'Demo Admin',
             firmName: 'Demo Law Firm',
-            email: 'admin@lawfirm.com'
+            email: 'admin@lawfirm.com',
+            practiceAreas: JSON.stringify([
+                'Criminal Defense',
+                'DUI/DWI',
+                'Traffic',
+                'Family Law'
+            ]),
+            timezone: 'America/New_York',
+            businessHours: JSON.stringify({
+                monday: { start: '09:00', end: '17:00' },
+                tuesday: { start: '09:00', end: '17:00' },
+                wednesday: { start: '09:00', end: '17:00' },
+                thursday: { start: '09:00', end: '17:00' },
+                friday: { start: '09:00', end: '17:00' },
+                saturday: { start: '09:00', end: '13:00' },
+                sunday: { start: 'closed', end: 'closed' }
+            })
         }
     });
 
