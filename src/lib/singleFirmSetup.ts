@@ -3,7 +3,9 @@
  * Pre-configure everything needed for one law firm to start using ExecView immediately
  */
 
-import { prisma } from './db';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 import { AuthService } from './auth';
 import { DEFAULT_FIELD_MAPPINGS } from '../config/defaultFieldMappings';
 import bcrypt from 'bcryptjs';

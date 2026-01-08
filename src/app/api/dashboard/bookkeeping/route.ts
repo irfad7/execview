@@ -54,11 +54,11 @@ export async function GET(request: NextRequest) {
     const summary = {
       totalCasesClosed: spreadsheetData.length,
       totalPaymentsCollected: data.weeklyClosedCases.reduce(
-        (sum: number, case: any) => sum + (case.totalPaymentsCollected || 0), 
+        (sum: number, caseItem: any) => sum + (caseItem.totalPaymentsCollected || 0), 
         0
       ),
       averagePaymentPerCase: spreadsheetData.length > 0 
-        ? data.weeklyClosedCases.reduce((sum: number, case: any) => sum + case.totalPaymentsCollected, 0) / spreadsheetData.length
+        ? data.weeklyClosedCases.reduce((sum: number, caseItem: any) => sum + caseItem.totalPaymentsCollected, 0) / spreadsheetData.length
         : 0
     };
 

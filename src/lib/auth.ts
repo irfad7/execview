@@ -1,5 +1,6 @@
-import prisma from './prisma';
-import { randomBytes } from 'crypto';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 import bcrypt from 'bcryptjs';
 
 export interface User {
@@ -58,7 +59,10 @@ export class AuthService {
     }
 
     static async createSession(userId: string): Promise<string> {
-        const token = randomBytes(32).toString('hex');
+        // Generate crypto-random token using Web Crypto API (Edge Runtime compatible)
+        const tokenBuffer = new Uint8Array(32);
+        crypto.getRandomValues(tokenBuffer);
+        const token = Array.from(tokenBuffer, byte => byte.toString(16).padStart(2, '0')).join('');
         const expiresAt = new Date(Date.now() + this.SESSION_DURATION);
         
         // Clean up existing sessions for this user

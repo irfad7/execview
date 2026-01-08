@@ -42,19 +42,19 @@ export async function GET(request: NextRequest) {
     const data = JSON.parse(cachedData);
 
     // Format for case management spreadsheet
-    const spreadsheetData = data.weeklyOpenCases.map((case: any) => ({
-      caseId: case.caseId,
-      caseName: case.caseName,
-      matterName: case.matterName,
-      clientName: case.clientName,
-      chargeType: case.chargeType,
-      outstandingBalance: formatCurrency(case.outstandingBalance),
-      discoveryReceived: case.discoveryReceived ? 'Yes' : 'No',
-      discoveryStatus: case.discoveryReceived ? 'normal' : 'red',
-      pleaOfferReceived: case.pleaOfferReceived ? 'Yes' : 'No',
-      pleaOfferStatus: case.pleaOfferReceived ? 'normal' : 'red',
-      status: case.status,
-      openDate: formatDate(case.openDate)
+    const spreadsheetData = data.weeklyOpenCases.map((caseItem: any) => ({
+      caseId: caseItem.caseId,
+      caseName: caseItem.caseName,
+      matterName: caseItem.matterName,
+      clientName: caseItem.clientName,
+      chargeType: caseItem.chargeType,
+      outstandingBalance: formatCurrency(caseItem.outstandingBalance),
+      discoveryReceived: caseItem.discoveryReceived ? 'Yes' : 'No',
+      discoveryStatus: caseItem.discoveryReceived ? 'normal' : 'red',
+      pleaOfferReceived: caseItem.pleaOfferReceived ? 'Yes' : 'No',
+      pleaOfferStatus: caseItem.pleaOfferReceived ? 'normal' : 'red',
+      status: caseItem.status,
+      openDate: formatDate(caseItem.openDate)
     }));
 
     // Format upcoming court dates

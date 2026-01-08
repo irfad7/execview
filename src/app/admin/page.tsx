@@ -172,6 +172,7 @@ export default function AdminPage() {
                                 onSave={(m) => handleSaveMapping("execview", m)}
                             />
                         </div>
+                        </div>
             ) : (
             <AnimatedCard delay={0.1}>
                 <div className="glass-card max-w-2xl mx-auto">
