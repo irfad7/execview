@@ -157,6 +157,7 @@ export default function AdminPage() {
                             </div>
                         </>
                     ) : activeTab === "mapping" ? (
+                        <div className="space-y-6">
                             <FieldMapper
                                 title="Clio Case Fields"
                                 service="clio"
@@ -171,7 +172,6 @@ export default function AdminPage() {
                                 options={["leads", "opportunities", "contact.name", "pipeline.stage", "status", "monetaryValue", "createdAt"]}
                                 onSave={(m) => handleSaveMapping("execview", m)}
                             />
-                        </div>
                         </div>
             ) : (
             <AnimatedCard delay={0.1}>
