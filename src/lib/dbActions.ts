@@ -1,25 +1,38 @@
 "use server";
 
 import prisma from "./prisma";
-import { createClient } from "./supabase/server";
+import { AuthService } from "./auth";
 import { FirmMetrics } from "./types";
+import { cookies } from "next/headers";
 
 // Helper to get current authenticated user
 async function getUser() {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    return user;
+    try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get('session_token')?.value;
+        
+        if (!token) return null;
+        
+        const user = await AuthService.validateSession(token);
+        return user;
+    } catch (error) {
+        console.error('Error getting user:', error);
+        return null;
+    }
 }
 
 export async function ensureDb() {
-    // No-op for Prisma/Supabase as schema is managed via migrations
+    // Prisma handles schema management automatically
+    console.log('Database connection ready');
 }
 
 export async function getSyncStatus() {
     const user = await getUser();
     if (!user) return null;
-    return prisma.syncStatus.findUnique({ where: { userId: user.id } });
+    
+    return prisma.syncStatus.findUnique({ 
+        where: { userId: user.id } 
+    });
 }
 
 export async function updateSyncStatus(status: string, errorMessage?: string) {
@@ -176,6 +189,7 @@ export async function saveFieldMapping(service: string, dashboardField: string, 
 export async function getFieldMappings(service: string) {
     const user = await getUser();
     if (!user) return [];
+    
     return prisma.fieldMapping.findMany({
         where: { service, userId: user.id }
     });
@@ -184,16 +198,6 @@ export async function getFieldMappings(service: string) {
 export async function getApiConfigs() {
     const user = await getUser();
     if (!user) return [];
-
-    // Ensure default configs exist for the user (similar to initDb logic)
-    const services = ['clio', 'execview', 'quickbooks'];
-    for (const service of services) {
-        // We only create if not exists, but we need to return all
-        // It's better to upsert or just query and fill gaps.
-        // For simplicity, let's just query. If empty, maybe UI handles it or we seed on signup.
-        // Actually, let's seed on demand if missing logic is preferred,
-        // but UI expects a list. 
-    }
 
     // Let's lazy-init the rows if they don't exist
     for (const service of ['clio', 'execview', 'quickbooks']) {
@@ -250,7 +254,7 @@ export async function updateProfile(data: { name: string, firmName: string, emai
         where: { id: user.id },
         data: {
             name: data.name,
-            firmName: data.firmName, // Note: Prisma model uses camelCase firmName mapping to firm_name
+            firmName: data.firmName,
             phone: data.phone
         }
     });
@@ -258,7 +262,7 @@ export async function updateProfile(data: { name: string, firmName: string, emai
 
 export async function addLog(service: string, level: string, message: string, details?: string) {
     const user = await getUser();
-    if (!user) return; // Logs require user context or global log table? Let's assume user context.
+    if (!user) return;
 
     await prisma.log.create({
         data: {

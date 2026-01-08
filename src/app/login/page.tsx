@@ -1,19 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Briefcase, Lock, ArrowRight, Mail, Loader2, Link } from "lucide-react";
+import { Briefcase, Lock, ArrowRight, Mail, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState("admin@lawfirm.com");
+    const [password, setPassword] = useState("admin123");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
     const router = useRouter();
-    const supabase = createClient();
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,54 +18,26 @@ export default function LoginPage() {
         setMessage(null);
 
         try {
-            if (isSignUp) {
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        emailRedirectTo: `${location.origin}/api/auth/callback`,
-                    },
-                });
-                if (error) throw error;
-                setMessage({ type: 'success', text: 'Check your email for the confirmation link!' });
-            } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-                if (error) throw error;
-                router.push('/');
-                router.refresh();
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
             }
+
+            router.push('/');
+            router.refresh();
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message });
         } finally {
             setLoading(false);
         }
     };
-
-    const handleMagicLink = async () => {
-        if (!email) {
-            setMessage({ type: 'error', text: 'Please enter your email first.' });
-            return;
-        }
-        setLoading(true);
-        setMessage(null);
-        try {
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    emailRedirectTo: `${location.origin}/api/auth/callback`,
-                },
-            });
-            if (error) throw error;
-            setMessage({ type: 'success', text: 'Check your email for the magic link!' });
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message });
-        } finally {
-            setLoading(false);
-        }
-    }
 
     return (
         <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 flex-col">
@@ -118,7 +87,7 @@ export default function LoginPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     className="w-full bg-white/5 border border-sidebar-border rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-                                    placeholder="Create or enter password"
+                                    placeholder="Enter your password"
                                 />
                             </div>
                         </div>
@@ -140,45 +109,24 @@ export default function LoginPage() {
                         >
                             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                                 <>
-                                    {isSignUp ? 'Create Account' : 'Sign In'}
+                                    Sign In
                                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div className="mt-6 flex flex-col gap-4">
-                        <button
-                            type="button"
-                            onClick={handleMagicLink}
-                            disabled={loading}
-                            className="w-full py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-all flex items-center justify-center gap-2"
-                        >
-                            <Link className="w-3 h-3" />
-                            Email me a Magic Link instead
-                        </button>
-
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-sidebar-border" />
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-background px-2 text-sidebar-foreground font-bold">Or</span>
-                            </div>
+                    <div className="mt-6 text-center">
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                            <p className="text-xs text-primary font-bold mb-2">Demo Credentials</p>
+                            <p className="text-xs text-zinc-400">Email: admin@lawfirm.com</p>
+                            <p className="text-xs text-zinc-400">Password: admin123</p>
                         </div>
-
-                        <button
-                            type="button"
-                            onClick={() => { setIsSignUp(!isSignUp); setMessage(null); }}
-                            className="text-xs text-sidebar-foreground hover:text-foreground transition-colors font-bold text-center"
-                        >
-                            {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
-                        </button>
                     </div>
                 </div>
 
                 <p className="text-center text-sidebar-foreground text-xs mt-8 font-medium">
-                    Secured by Supabase Authentication
+                    Local SQLite Database
                 </p>
             </motion.div>
         </div>

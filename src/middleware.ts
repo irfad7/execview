@@ -1,62 +1,31 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { AuthService } from '@/lib/auth'
 
 export async function middleware(request: NextRequest) {
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
-    })
+    // Skip auth for login page and API auth routes
+    if (request.nextUrl.pathname.startsWith('/login') || 
+        request.nextUrl.pathname.startsWith('/api/auth/login')) {
+        return NextResponse.next()
+    }
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value
-                },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    })
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    })
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    response.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
-                },
-            },
-        }
-    )
+    // Check if user is authenticated
+    const token = request.cookies.get('session_token')?.value
 
-    await supabase.auth.getUser()
+    if (!token) {
+        return NextResponse.redirect(new URL('/login', request.url))
+    }
 
-    return response
+    // Validate session
+    const user = await AuthService.validateSession(token)
+    
+    if (!user) {
+        // Clear invalid cookie and redirect
+        const response = NextResponse.redirect(new URL('/login', request.url))
+        response.cookies.delete('session_token')
+        return response
+    }
+
+    return NextResponse.next()
 }
 
 export const config = {

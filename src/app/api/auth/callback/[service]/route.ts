@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/middleware/auth';
 
 const CONFIGS = {
     clio: {
@@ -31,12 +31,11 @@ export async function GET(
     const config = CONFIGS[service as keyof typeof CONFIGS];
 
     // Authenticate User
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return NextResponse.redirect(new URL('/login?error=unauthorized_callback', request.url));
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+        return authResult; // Redirect to login
     }
+    const { user } = authResult;
 
     if (!code) {
         return NextResponse.redirect(new URL('/integrations?error=no_code', request.url));
@@ -87,7 +86,7 @@ export async function GET(
         await prisma.apiConfig.upsert({
             where: {
                 service_userId: {
-                    service: service, // e.g. 'execview'
+                    service: service,
                     userId: user.id
                 }
             },
@@ -98,7 +97,6 @@ export async function GET(
                 updatedAt: new Date()
             },
             create: {
-                id: crypto.randomUUID(), // or allow default CUID
                 service: service,
                 userId: user.id,
                 accessToken: data.access_token,
