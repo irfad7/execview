@@ -1,16 +1,17 @@
 import { PrismaClient } from '@prisma/client';
+import { mockDeep, mockReset, DeepMockProxy } from 'jest-mock-extended';
+
+export type MockPrisma = DeepMockProxy<PrismaClient>;
 
 declare global {
-  var __PRISMA__: PrismaClient | undefined;
+  var __PRISMA__: MockPrisma | undefined;
 }
 
-// This ensures we use a single Prisma client instance during tests
-global.__PRISMA__ = global.__PRISMA__ || new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test_db'
-    }
-  }
-});
+// Create a mock Prisma instance for tests
+global.__PRISMA__ = global.__PRISMA__ || mockDeep<PrismaClient>();
 
 export const prisma = global.__PRISMA__;
+
+beforeEach(() => {
+  mockReset(prisma);
+});
