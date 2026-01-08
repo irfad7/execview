@@ -10,15 +10,17 @@ datasource db {
 
 model ApiConfig {
   id           String    @id @default(cuid())
-  service      String    @unique
+  service      String
   clientId     String?   @map("client_id")
   clientSecret String?   @map("client_secret")
   accessToken  String?   @map("access_token")
   refreshToken String?   @map("refresh_token")
+  realmId      String?   @map("realm_id") // For QuickBooks
   expiresAt    Int?      @map("expires_at")
+  isActive     Boolean   @default(false) @map("is_active")
   updatedAt    DateTime  @default(now()) @map("updated_at")
   
-  userId       String    @map("user_id") // Link to Supabase Auth User ID
+  userId       String    @map("user_id")
   
   @@unique([service, userId]) // Allow multiple users to connect to same service
 }
@@ -26,34 +28,36 @@ model ApiConfig {
 model FieldMapping {
   id             String   @id @default(cuid())
   service        String
-  dashboardField String   @map("dashboard_field")
-  sourceField    String   @map("source_field")
+  category       String   // New: cases, calendar, leads, etc.
+  mappings       String   @db.Text // JSON of field mappings
   updatedAt      DateTime @default(now()) @map("updated_at")
   
   userId         String   @map("user_id")
 
-  @@unique([service, dashboardField, userId])
+  @@unique([service, category, userId])
 }
 
 model DashboardCache {
   id        Int      @id @default(autoincrement())
-  data      String   @db.Text
+  cacheKey  String   @map("cache_key") // New: allows multiple cache entries
+  cacheData String   @map("cache_data") @db.Text
   updatedAt DateTime @default(now()) @map("updated_at")
   
   userId    String   @map("user_id")
   
-  @@unique([userId])
+  @@unique([userId, cacheKey])
 }
 
 model SyncStatus {
   id           Int      @id @default(autoincrement())
+  service      String   // New: track sync per service
   lastUpdated  DateTime? @map("last_updated")
   status       String?
   errorMessage String?   @map("error_message")
   
   userId       String   @map("user_id")
   
-  @@unique([userId])
+  @@unique([userId, service])
 }
 
 model Log {
@@ -67,14 +71,15 @@ model Log {
   userId    String   @map("user_id")
 }
 
-model SystemSetting {
-  key       String   @id
-  value     String   @db.Text
+model SystemSettings { // Fixed table name
+  id        String   @id @default(cuid()) // Added proper ID
+  settingKey String  @map("setting_key")
+  settingValue String @map("setting_value") @db.Text
   updatedAt DateTime @default(now()) @map("updated_at")
   
   userId    String   @map("user_id")
   
-  @@unique([key, userId])
+  @@unique([settingKey, userId])
 }
 
 model User {
@@ -85,6 +90,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   
   sessions  Session[]
+  profile   Profile?
 }
 
 model Session {
@@ -98,10 +104,16 @@ model Session {
 }
 
 model Profile {
-  id        String   @id @map("id") // Supabase Auth ID
-  name      String?
-  firmName  String?  @map("firm_name")
-  email     String?
-  phone     String?
-  updatedAt DateTime @default(now()) @map("updated_at")
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id") // Link to User model
+  name          String?
+  firmName      String?  @map("firm_name")
+  email         String?
+  phone         String?
+  practiceAreas String?  @map("practice_areas") @db.Text // JSON array
+  timezone      String?
+  businessHours String?  @map("business_hours") @db.Text // JSON object
+  updatedAt     DateTime @default(now()) @map("updated_at")
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
