@@ -3,13 +3,39 @@ export interface ClioCase {
     name: string;
     clientName: string;
     caseNumber: string;
-    chargeType: "Hourly" | "Flat Fee" | "Contingency";
-    type: "Felony" | "Misdemeanor" | "DUI" | "Traffic" | "Expungement";
+    chargeType: string;
+    type: string;
+    status: string;
     openDate: string;
     upcomingCourtDate?: string;
     outstandingBalance: number;
     discoveryReceived: boolean;
     pleaOfferReceived: boolean;
+}
+
+export interface ClioData {
+    caseManagement: {
+        totalOpenCases: number;
+        casesByChargeType: Record<string, number>;
+        totalOutstandingBalance: number;
+        casesWithoutDiscovery: number;
+        casesWithoutPleaOffer: number;
+        percentNoDiscovery: number;
+        percentNoPleaOffer: number;
+    };
+    upcomingCourtDates: Array<{
+        caseId: string;
+        caseName: string;
+        date: string;
+        daysUntil: number;
+        isUrgent: boolean;
+        summary: string;
+    }>;
+    bookkeeping: {
+        casesClosedThisWeek: number;
+        paymentsCollectedThisWeek: number;
+        averageCaseValueYTD: number;
+    };
 }
 
 export interface GHLMetric {
@@ -42,6 +68,10 @@ export interface FirmMetrics {
     newCasesSignedWeekly: number;
     newCasesSignedYTD: number;
     clio: ClioCase[];
+    clioData?: ClioData;
     ghl: GHLMetric;
     qb: QBMetric;
+    weeklyClosedCases?: number;
+    paymentsCollectedWeekly?: number;
+    avgCaseValue?: number;
 }

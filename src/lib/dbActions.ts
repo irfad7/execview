@@ -119,8 +119,23 @@ export async function refreshDashboardData() {
     try {
         const clioRes = await clio.fetchMetrics();
         if (clioRes.status === "success") {
+            // Store core case data
             metrics.clio = clioRes.data.matters || [];
             metrics.activeCases = clioRes.data.activeCases || 0;
+            
+            // Store case management data for dashboard
+            metrics.clioData = {
+                caseManagement: clioRes.data.caseManagement || {},
+                upcomingCourtDates: clioRes.data.upcomingCourtDates || [],
+                bookkeeping: clioRes.data.bookkeeping || {}
+            };
+            
+            // Update dashboard metrics with Clio data
+            if (clioRes.data.bookkeeping) {
+                metrics.weeklyClosedCases = clioRes.data.bookkeeping.casesClosedThisWeek || 0;
+                metrics.paymentsCollectedWeekly = clioRes.data.bookkeeping.paymentsCollectedThisWeek || 0;
+                metrics.avgCaseValue = clioRes.data.bookkeeping.averageCaseValueYTD || 0;
+            }
         }
     } catch (e) {
         console.error("Clio sync failed:", e);

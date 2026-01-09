@@ -41,21 +41,41 @@ export async function GET(request: NextRequest) {
 
     const data = cachedData;
 
-    // Format for bookkeeping spreadsheet using QB recent collections
-    const spreadsheetData = data.qb?.recentCollections?.map((collection: any) => ({
-      dateClosed: formatDate(collection.date),
-      matterName: `Payment from ${collection.clientName}`,
-      clientName: collection.clientName,
-      caseNumber: collection.id,
-      totalPaymentsCollected: formatCurrency(collection.amount)
-    })) || [];
+    // Use enhanced Clio bookkeeping data if available, otherwise fallback to QB data
+    let spreadsheetData: any[] = [];
+    let summary: any = {};
 
-    // Calculate summary statistics
-    const summary = {
-      totalCasesClosed: data.qb?.closedCasesWeekly || 0,
-      totalPaymentsCollected: data.qb?.paymentsCollectedWeekly || 0,
-      averagePaymentPerCase: data.qb?.avgCaseValue || 0
-    };
+    if (data.clioData?.bookkeeping) {
+      // Use rich Clio bookkeeping data
+      spreadsheetData = data.clio?.slice(0, 10).map((caseItem: any) => ({
+        dateClosed: formatDate(caseItem.openDate), // Would be close date for closed cases
+        matterName: caseItem.name,
+        clientName: caseItem.clientName,
+        caseNumber: caseItem.caseNumber,
+        totalPaymentsCollected: formatCurrency(caseItem.outstandingBalance || 0)
+      })) || [];
+
+      summary = {
+        totalCasesClosed: data.clioData.bookkeeping.casesClosedThisWeek,
+        totalPaymentsCollected: data.clioData.bookkeeping.paymentsCollectedThisWeek,
+        averagePaymentPerCase: data.clioData.bookkeeping.averageCaseValueYTD
+      };
+    } else {
+      // Fallback to QB data
+      spreadsheetData = data.qb?.recentCollections?.map((collection: any) => ({
+        dateClosed: formatDate(collection.date),
+        matterName: `Payment from ${collection.clientName}`,
+        clientName: collection.clientName,
+        caseNumber: collection.id,
+        totalPaymentsCollected: formatCurrency(collection.amount)
+      })) || [];
+
+      summary = {
+        totalCasesClosed: data.qb?.closedCasesWeekly || 0,
+        totalPaymentsCollected: data.qb?.paymentsCollectedWeekly || 0,
+        averagePaymentPerCase: data.qb?.avgCaseValue || 0
+      };
+    }
 
     return NextResponse.json({
       success: true,

@@ -57,8 +57,16 @@ export async function GET(request: NextRequest) {
       openDate: formatDate(caseItem.openDate)
     })) || [];
 
-    // Format upcoming court dates from Clio cases
-    const courtDates = data.clio?.filter((c: any) => c.upcomingCourtDate).map((court: any) => ({
+    // Use enhanced Clio court dates if available, otherwise fallback to basic mapping
+    const courtDates = data.clioData?.upcomingCourtDates?.map(court => ({
+      caseId: court.caseId,
+      caseName: court.caseName,
+      courtDate: formatDate(court.date),
+      eventType: court.summary || 'Court Hearing',
+      daysUntilCourt: court.daysUntil,
+      status: court.isUrgent ? 'red' : 'normal',
+      urgencyLabel: court.isUrgent ? 'URGENT' : ''
+    })) || data.clio?.filter((c: any) => c.upcomingCourtDate).map((court: any) => ({
       caseId: court.id,
       caseName: court.name,
       courtDate: formatDate(court.upcomingCourtDate),
@@ -68,18 +76,21 @@ export async function GET(request: NextRequest) {
       urgencyLabel: Math.ceil((new Date(court.upcomingCourtDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 7 ? 'URGENT' : ''
     })) || [];
 
-    // Dashboard summary
-    const totalBalance = data.clio?.reduce((sum: number, c: any) => sum + (c.outstandingBalance || 0), 0) || 0;
-    const noDiscoveryCount = data.clio?.filter((c: any) => !c.discoveryReceived).length || 0;
-    const noPleaOfferCount = data.clio?.filter((c: any) => !c.pleaOfferReceived).length || 0;
-    const totalCases = data.clio?.length || 0;
-
-    const dashboard = {
-      totalOutstandingBalance: formatCurrency(totalBalance),
-      percentageNoDiscovery: totalCases > 0 ? Math.round((noDiscoveryCount / totalCases) * 100) : 0,
-      percentageNoPleaOffer: totalCases > 0 ? Math.round((noPleaOfferCount / totalCases) * 100) : 0,
+    // Use enhanced Clio dashboard data if available, otherwise calculate from raw data
+    const dashboard = data.clioData?.caseManagement ? {
+      totalOutstandingBalance: formatCurrency(data.clioData.caseManagement.totalOutstandingBalance),
+      percentageNoDiscovery: data.clioData.caseManagement.percentNoDiscovery,
+      percentageNoPleaOffer: data.clioData.caseManagement.percentNoPleaOffer,
+      casesByChargeType: data.clioData.caseManagement.casesByChargeType,
+      totalOpenCases: data.clioData.caseManagement.totalOpenCases,
+      urgentCourtDates: courtDates.filter((c: any) => c.status === 'red').length
+    } : {
+      // Fallback calculations
+      totalOutstandingBalance: formatCurrency(data.clio?.reduce((sum: number, c: any) => sum + (c.outstandingBalance || 0), 0) || 0),
+      percentageNoDiscovery: data.clio?.length > 0 ? Math.round((data.clio.filter((c: any) => !c.discoveryReceived).length / data.clio.length) * 100) : 0,
+      percentageNoPleaOffer: data.clio?.length > 0 ? Math.round((data.clio.filter((c: any) => !c.pleaOfferReceived).length / data.clio.length) * 100) : 0,
       casesByChargeType: {},
-      totalOpenCases: totalCases,
+      totalOpenCases: data.clio?.length || 0,
       urgentCourtDates: courtDates.filter((c: any) => c.status === 'red').length
     };
 
