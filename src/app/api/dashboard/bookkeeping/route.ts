@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get cached bookkeeping data
-    const cachedData = await getCachedData(user.id, 'bookkeeping');
+    const cachedData = await getCachedData();
     
     if (!cachedData) {
       return NextResponse.json(
@@ -39,27 +39,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = JSON.parse(cachedData);
+    const data = cachedData;
 
-    // Format for bookkeeping spreadsheet
-    const spreadsheetData = data.weeklyClosedCases.map((closedCase: any) => ({
-      dateClosed: formatDate(closedCase.dateClosed),
-      matterName: closedCase.matterName,
-      clientName: closedCase.clientName,
-      caseNumber: closedCase.caseNumber,
-      totalPaymentsCollected: formatCurrency(closedCase.totalPaymentsCollected)
-    }));
+    // Format for bookkeeping spreadsheet using QB recent collections
+    const spreadsheetData = data.qb?.recentCollections?.map((collection: any) => ({
+      dateClosed: formatDate(collection.date),
+      matterName: `Payment from ${collection.clientName}`,
+      clientName: collection.clientName,
+      caseNumber: collection.id,
+      totalPaymentsCollected: formatCurrency(collection.amount)
+    })) || [];
 
     // Calculate summary statistics
     const summary = {
-      totalCasesClosed: spreadsheetData.length,
-      totalPaymentsCollected: data.weeklyClosedCases.reduce(
-        (sum: number, caseItem: any) => sum + (caseItem.totalPaymentsCollected || 0), 
-        0
-      ),
-      averagePaymentPerCase: spreadsheetData.length > 0 
-        ? data.weeklyClosedCases.reduce((sum: number, caseItem: any) => sum + caseItem.totalPaymentsCollected, 0) / spreadsheetData.length
-        : 0
+      totalCasesClosed: data.qb?.closedCasesWeekly || 0,
+      totalPaymentsCollected: data.qb?.paymentsCollectedWeekly || 0,
+      averagePaymentPerCase: data.qb?.avgCaseValue || 0
     };
 
     return NextResponse.json({
@@ -71,7 +66,7 @@ export async function GET(request: NextRequest) {
           totalPaymentsCollected: formatCurrency(summary.totalPaymentsCollected),
           averagePaymentPerCase: formatCurrency(summary.averagePaymentPerCase)
         },
-        lastUpdated: data.lastUpdated
+        lastUpdated: new Date().toISOString()
       }
     });
 

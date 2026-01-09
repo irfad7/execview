@@ -9,7 +9,7 @@ import { cookies } from "next/headers";
 async function getUser() {
     try {
         const cookieStore = await cookies();
-        const token = cookieStore.get('session_token')?.value;
+        const token = cookieStore.get('session')?.value;
         
         if (!token) return null;
         
@@ -31,7 +31,12 @@ export async function getSyncStatus() {
     if (!user) return null;
     
     return prisma.syncStatus.findUnique({ 
-        where: { userId: user.id } 
+        where: { 
+            userId_service: { 
+                userId: user.id, 
+                service: 'general' 
+            } 
+        } 
     });
 }
 
@@ -40,9 +45,20 @@ export async function updateSyncStatus(status: string, errorMessage?: string) {
     if (!user) return;
 
     await prisma.syncStatus.upsert({
-        where: { userId: user.id },
+        where: { 
+            userId_service: { 
+                userId: user.id, 
+                service: 'general' 
+            } 
+        },
         update: { status, errorMessage, lastUpdated: new Date() },
-        create: { userId: user.id, status, errorMessage, lastUpdated: new Date() }
+        create: { 
+            userId: user.id, 
+            service: 'general',
+            status, 
+            errorMessage, 
+            lastUpdated: new Date() 
+        }
     });
 }
 
@@ -58,15 +74,16 @@ export async function refreshDashboardData() {
 
     // Fetch User's API Configs
     const configs = await prisma.apiConfig.findMany({
-        where: { userId: user.id }
+        where: { userId: user.id, isActive: true }
     });
 
     const getToken = (service: string) => configs.find(c => c.service === service)?.accessToken;
+    const getRealmId = (service: string) => configs.find(c => c.service === service)?.realmId;
 
-    // Initialize connectors with tokens
+    // Initialize connectors with tokens and additional params
     const clio = new ClioConnector(getToken('clio'));
     const qb = new QuickBooksConnector(getToken('quickbooks'));
-    const ghl = new GoHighLevelConnector(getToken('execview'));
+    const ghl = new GoHighLevelConnector(getToken('execview'), getRealmId('execview')); // realmId stores location_id for GHL
 
     const metrics: any = {
         clio: [],
@@ -142,12 +159,17 @@ export async function getLiveDashboardData(): Promise<FirmMetrics | null> {
     if (!user) return null;
 
     const cache = await prisma.dashboardCache.findUnique({
-        where: { userId: user.id }
+        where: { 
+            userId_cacheKey: { 
+                userId: user.id, 
+                cacheKey: 'dashboard_metrics' 
+            } 
+        }
     });
 
     if (!cache) return null;
     try {
-        return JSON.parse(cache.data) as FirmMetrics;
+        return JSON.parse(cache.cacheData) as FirmMetrics;
     } catch (e) {
         console.error("Failed to parse dashboard cache", e);
         return null;
@@ -163,26 +185,43 @@ export async function setCachedData(data: any) {
     if (!user) return;
 
     await prisma.dashboardCache.upsert({
-        where: { userId: user.id },
-        update: { data: JSON.stringify(data), updatedAt: new Date() },
-        create: { userId: user.id, data: JSON.stringify(data) }
+        where: { 
+            userId_cacheKey: { 
+                userId: user.id, 
+                cacheKey: 'dashboard_metrics' 
+            } 
+        },
+        update: { 
+            cacheData: JSON.stringify(data), 
+            updatedAt: new Date() 
+        },
+        create: { 
+            userId: user.id, 
+            cacheKey: 'dashboard_metrics',
+            cacheData: JSON.stringify(data) 
+        }
     });
 }
 
-export async function saveFieldMapping(service: string, dashboardField: string, sourceField: string) {
+export async function saveFieldMapping(service: string, category: string, mappings: any) {
     const user = await getUser();
     if (!user) return;
 
     await prisma.fieldMapping.upsert({
         where: {
-            service_dashboardField_userId: {
+            service_category_userId: {
                 service,
-                dashboardField,
+                category,
                 userId: user.id
             }
         },
-        update: { sourceField },
-        create: { service, dashboardField, sourceField, userId: user.id }
+        update: { mappings: JSON.stringify(mappings) },
+        create: { 
+            service, 
+            category, 
+            mappings: JSON.stringify(mappings), 
+            userId: user.id 
+        }
     });
 }
 
@@ -213,7 +252,7 @@ export async function getApiConfigs() {
 
     return prisma.apiConfig.findMany({
         where: { userId: user.id },
-        select: { service: true, accessToken: true, updatedAt: true }
+        select: { service: true, accessToken: true, realmId: true, updatedAt: true }
     });
 }
 
@@ -231,12 +270,12 @@ export async function getProfile() {
     const user = await getUser();
     if (!user) return null;
 
-    let profile = await prisma.profile.findUnique({ where: { id: user.id } });
+    let profile = await prisma.profile.findUnique({ where: { userId: user.id } });
     if (!profile) {
         // Create default profile
         profile = await prisma.profile.create({
             data: {
-                id: user.id,
+                userId: user.id,
                 email: user.email,
                 name: 'New User',
                 firmName: 'My Firm'
@@ -251,7 +290,7 @@ export async function updateProfile(data: { name: string, firmName: string, emai
     if (!user) return;
 
     await prisma.profile.update({
-        where: { id: user.id },
+        where: { userId: user.id },
         data: {
             name: data.name,
             firmName: data.firmName,
@@ -290,19 +329,19 @@ export async function getSystemSetting(key: string) {
     const user = await getUser();
     if (!user) return null;
 
-    const setting = await prisma.systemSetting.findUnique({
-        where: { key_userId: { key, userId: user.id } }
+    const setting = await prisma.systemSettings.findUnique({
+        where: { settingKey_userId: { settingKey: key, userId: user.id } }
     });
-    return setting ? JSON.parse(setting.value) : null;
+    return setting ? JSON.parse(setting.settingValue) : null;
 }
 
 export async function updateSystemSetting(key: string, value: any) {
     const user = await getUser();
     if (!user) return;
 
-    await prisma.systemSetting.upsert({
-        where: { key_userId: { key, userId: user.id } },
-        update: { value: JSON.stringify(value) },
-        create: { key, value: JSON.stringify(value), userId: user.id }
+    await prisma.systemSettings.upsert({
+        where: { settingKey_userId: { settingKey: key, userId: user.id } },
+        update: { settingValue: JSON.stringify(value) },
+        create: { settingKey: key, settingValue: JSON.stringify(value), userId: user.id }
     });
 }

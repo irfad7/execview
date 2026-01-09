@@ -22,7 +22,7 @@ export interface GHLMetric {
     consultationsWeekly: number;
     conversionRate: number;
     roi: number;
-    leadSources: Array<{ source: string; count: number; percentage: number }>;
+    leadSources: { [key: string]: number };
     opportunityFeed: Array<{ id: string; contactName: string; date: string; timeOnPhone: string; pipelineStage: string; source: string; owner: string }>;
     avgTimeOnPhone: string;
 }

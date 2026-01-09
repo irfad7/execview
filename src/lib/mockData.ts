@@ -64,12 +64,12 @@ const MOCK_GHL_METRICS: GHLMetric = {
     consultationsWeekly: 12,
     conversionRate: 0.15,
     roi: 4.2,
-    leadSources: [
-        { source: "Google LSA", count: 12, percentage: 50 },
-        { source: "Referrals", count: 6, percentage: 25 },
-        { source: "Website", count: 4, percentage: 17 },
-        { source: "Other", count: 2, percentage: 8 }
-    ],
+    leadSources: {
+        "Google LSA": 12,
+        "Referrals": 6,
+        "Website": 4,
+        "Other": 2
+    },
     opportunityFeed: [
         { id: "L1", contactName: "Robert Brown", date: "2025-12-23", timeOnPhone: "12m", pipelineStage: "Discovery", source: "Google LSA", owner: "Ivy" },
         { id: "L2", contactName: "Sarah Miller", date: "2025-12-23", timeOnPhone: "8m", pipelineStage: "Scheduled", source: "Website", owner: "Ivy" }

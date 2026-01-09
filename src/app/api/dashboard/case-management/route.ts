@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get cached case management data
-    const cachedData = await getCachedData(user.id, 'case_management');
+    const cachedData = await getCachedData();
     
     if (!cachedData) {
       return NextResponse.json(
@@ -39,13 +39,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = JSON.parse(cachedData);
+    const data = cachedData;
 
-    // Format for case management spreadsheet
-    const spreadsheetData = data.weeklyOpenCases.map((caseItem: any) => ({
-      caseId: caseItem.caseId,
-      caseName: caseItem.caseName,
-      matterName: caseItem.matterName,
+    // Format for case management spreadsheet using Clio cases
+    const spreadsheetData = data.clio?.map((caseItem: any) => ({
+      caseId: caseItem.id,
+      caseName: caseItem.name,
+      matterName: caseItem.name,
       clientName: caseItem.clientName,
       chargeType: caseItem.chargeType,
       outstandingBalance: formatCurrency(caseItem.outstandingBalance),
@@ -53,28 +53,33 @@ export async function GET(request: NextRequest) {
       discoveryStatus: caseItem.discoveryReceived ? 'normal' : 'red',
       pleaOfferReceived: caseItem.pleaOfferReceived ? 'Yes' : 'No',
       pleaOfferStatus: caseItem.pleaOfferReceived ? 'normal' : 'red',
-      status: caseItem.status,
+      status: 'Active',
       openDate: formatDate(caseItem.openDate)
-    }));
+    })) || [];
 
-    // Format upcoming court dates
-    const courtDates = data.upcomingCourtDates.map((court: any) => ({
-      caseId: court.caseId,
-      caseName: court.caseName,
-      courtDate: formatDate(court.courtDate),
-      eventType: court.eventType,
-      daysUntilCourt: court.daysUntilCourt,
-      status: court.isUrgent ? 'red' : 'normal',
-      urgencyLabel: court.isUrgent ? 'URGENT' : ''
-    }));
+    // Format upcoming court dates from Clio cases
+    const courtDates = data.clio?.filter((c: any) => c.upcomingCourtDate).map((court: any) => ({
+      caseId: court.id,
+      caseName: court.name,
+      courtDate: formatDate(court.upcomingCourtDate),
+      eventType: 'Court Hearing',
+      daysUntilCourt: Math.ceil((new Date(court.upcomingCourtDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+      status: Math.ceil((new Date(court.upcomingCourtDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 7 ? 'red' : 'normal',
+      urgencyLabel: Math.ceil((new Date(court.upcomingCourtDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 7 ? 'URGENT' : ''
+    })) || [];
 
     // Dashboard summary
+    const totalBalance = data.clio?.reduce((sum: number, c: any) => sum + (c.outstandingBalance || 0), 0) || 0;
+    const noDiscoveryCount = data.clio?.filter((c: any) => !c.discoveryReceived).length || 0;
+    const noPleaOfferCount = data.clio?.filter((c: any) => !c.pleaOfferReceived).length || 0;
+    const totalCases = data.clio?.length || 0;
+
     const dashboard = {
-      totalOutstandingBalance: formatCurrency(data.dashboard.totalOutstandingBalance),
-      percentageNoDiscovery: Math.round(data.dashboard.percentageNoDiscovery),
-      percentageNoPleaOffer: Math.round(data.dashboard.percentageNoPleaOffer),
-      casesByChargeType: data.dashboard.casesByChargeType,
-      totalOpenCases: spreadsheetData.length,
+      totalOutstandingBalance: formatCurrency(totalBalance),
+      percentageNoDiscovery: totalCases > 0 ? Math.round((noDiscoveryCount / totalCases) * 100) : 0,
+      percentageNoPleaOffer: totalCases > 0 ? Math.round((noPleaOfferCount / totalCases) * 100) : 0,
+      casesByChargeType: {},
+      totalOpenCases: totalCases,
       urgentCourtDates: courtDates.filter((c: any) => c.status === 'red').length
     };
 
@@ -84,7 +89,7 @@ export async function GET(request: NextRequest) {
         spreadsheet: spreadsheetData,
         courtDates,
         dashboard,
-        lastUpdated: data.lastUpdated
+        lastUpdated: new Date().toISOString()
       }
     });
 

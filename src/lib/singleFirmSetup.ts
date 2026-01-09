@@ -381,9 +381,9 @@ export class SingleFirmSetupService {
   static async updateAnnualGoals(userId: string, revenueGoal: number, leadsGoal: number): Promise<void> {
     await prisma.systemSettings.upsert({
       where: {
-        userId_settingKey: {
-          userId,
-          settingKey: 'annual_goals'
+        settingKey_userId: {
+          settingKey: 'annual_goals',
+          userId
         }
       },
       update: {

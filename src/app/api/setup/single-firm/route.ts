@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     try {
-      await AuthService.validateCredentials(email, password);
+      await AuthService.verifyPassword(email, password);
       return NextResponse.json(
         { error: 'User already exists with this email' },
         { status: 409 }

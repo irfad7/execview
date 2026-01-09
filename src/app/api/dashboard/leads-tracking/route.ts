@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get cached leads tracking data
-    const cachedData = await getCachedData(user.id, 'leads_tracking');
+    const cachedData = await getCachedData();
     
     if (!cachedData) {
       return NextResponse.json(
@@ -39,19 +39,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = JSON.parse(cachedData);
+    const data = cachedData;
 
-    // Format leads spreadsheet data
-    const spreadsheetData = data.leadsSpreadsheet.map((lead: any) => ({
-      leadId: lead.leadId,
-      ownerName: lead.ownerName,
-      leadName: lead.leadName,
-      dateCreated: formatDate(lead.dateCreated),
-      phoneTime: formatPhoneTime(lead.phoneTime),
+    // Format leads spreadsheet data from GHL opportunity feed
+    const spreadsheetData = data.ghl?.opportunityFeed?.map((lead: any) => ({
+      leadId: lead.id,
+      ownerName: lead.owner,
+      leadName: lead.contactName,
+      dateCreated: formatDate(lead.date),
+      phoneTime: formatPhoneTime(lead.timeOnPhone),
       pipelineStage: lead.pipelineStage,
       source: lead.source,
-      daysOld: calculateDaysOld(lead.dateCreated)
-    }));
+      daysOld: calculateDaysOld(lead.date)
+    })) || [];
 
     // Group leads by pipeline stage
     const leadsByStage = spreadsheetData.reduce((acc: any, lead: any) => {
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Lead activity summary
     const summary = {
       totalLeads: spreadsheetData.length,
-      avgPhoneTime: calculateAveragePhoneTime(data.leadsSpreadsheet),
+      avgPhoneTime: data.ghl?.avgTimeOnPhone || '0m',
       leadsThisWeek: spreadsheetData.filter((lead: any) => 
         calculateDaysOld(lead.dateCreated) <= 7
       ).length,
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         leadsByStage: pipelineStages,
         leadsBySource,
         dailyTrends: dailyLeads,
-        lastUpdated: data.lastUpdated
+        lastUpdated: new Date().toISOString()
       }
     });
 

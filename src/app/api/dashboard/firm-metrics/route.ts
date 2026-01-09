@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get cached firm metrics data
-    const cachedData = await getCachedData(user.id, 'firm_metrics');
+    const cachedData = await getCachedData();
     
     if (!cachedData) {
       return NextResponse.json(
@@ -39,70 +39,69 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = JSON.parse(cachedData);
+    const data = cachedData;
 
-    // Format revenue metrics
+    // Format revenue metrics from QB data
     const revenueMetrics = {
-      weekly: formatCurrency(data.weeklyRevenue),
-      yearToDate: formatCurrency(data.totalYtdRevenue),
-      averageCaseValue: formatCurrency(data.averageCaseValueYtd),
+      weekly: formatCurrency(data.qb?.paymentsCollectedWeekly || 0),
+      yearToDate: formatCurrency(data.qb?.revenueYTD || 0),
+      averageCaseValue: formatCurrency(data.qb?.avgCaseValue || 0),
       goalProgress: {
-        current: data.totalYtdRevenue,
-        goal: data.annualGoals.revenueGoal,
-        percentage: Math.round((data.totalYtdRevenue / data.annualGoals.revenueGoal) * 100),
-        onTrack: data.annualGoals.revenueOnTrack,
-        status: data.annualGoals.revenueOnTrack ? 'On Track' : 'Behind'
+        current: data.qb?.revenueYTD || 0,
+        goal: 1000000, // Default annual goal
+        percentage: Math.round(((data.qb?.revenueYTD || 0) / 1000000) * 100),
+        onTrack: (data.qb?.revenueYTD || 0) > 500000,
+        status: (data.qb?.revenueYTD || 0) > 500000 ? 'On Track' : 'Behind'
       }
     };
 
-    // Format lead metrics
+    // Format lead metrics from GHL data
     const leadMetrics = {
-      weekly: data.weeklyLeads,
-      yearToDate: data.ytdLeads,
+      weekly: data.ghl?.leadsWeekly || 0,
+      yearToDate: data.ghl?.leadsYTD || 0,
       goalProgress: {
-        current: data.ytdLeads,
-        goal: data.annualGoals.leadsGoal,
-        percentage: Math.round((data.ytdLeads / data.annualGoals.leadsGoal) * 100),
-        onTrack: data.annualGoals.leadsOnTrack,
-        status: data.annualGoals.leadsOnTrack ? 'On Track' : 'Behind'
+        current: data.ghl?.leadsYTD || 0,
+        goal: 1000, // Default annual goal
+        percentage: Math.round(((data.ghl?.leadsYTD || 0) / 1000) * 100),
+        onTrack: (data.ghl?.leadsYTD || 0) > 500,
+        status: (data.ghl?.leadsYTD || 0) > 500 ? 'On Track' : 'Behind'
       }
     };
 
-    // Format conversion metrics
+    // Format conversion metrics from GHL data
     const conversionMetrics = {
-      consultsScheduledPerLead: formatPercentage(data.conversionRate.consultsScheduledPerLead),
-      retainersSignedPerConsult: formatPercentage(data.conversionRate.retainersSignedPerConsult),
-      overallConversionRate: formatPercentage(
-        data.conversionRate.consultsScheduledPerLead * data.conversionRate.retainersSignedPerConsult
-      )
+      consultsScheduledPerLead: formatPercentage((data.ghl?.conversionRate || 0) / 100),
+      retainersSignedPerConsult: formatPercentage(0.30), // Default 30% close rate
+      overallConversionRate: formatPercentage(((data.ghl?.conversionRate || 0) * 0.30) / 100)
     };
 
-    // Format marketing ROI metrics
+    // Format marketing ROI metrics from GHL data  
     const marketingMetrics = {
-      roiPercentage: formatPercentage(data.marketingRoi.roiPercentage / 100), // Convert to decimal percentage
-      clientAcquisitionCost: formatCurrency(data.marketingRoi.clientAcquisitionCost),
-      roiStatus: data.marketingRoi.roiPercentage > 300 ? 'Excellent' : 
-                 data.marketingRoi.roiPercentage > 200 ? 'Good' : 
-                 data.marketingRoi.roiPercentage > 100 ? 'Fair' : 'Poor'
+      roiPercentage: formatPercentage((data.ghl?.roi || 0) / 100),
+      clientAcquisitionCost: formatCurrency(500), // Default CAC
+      roiStatus: (data.ghl?.roi || 0) > 300 ? 'Excellent' : 
+                 (data.ghl?.roi || 0) > 200 ? 'Good' : 
+                 (data.ghl?.roi || 0) > 100 ? 'Fair' : 'Poor'
     };
 
-    // Format lead source breakdown
-    const leadSources = Object.entries(data.leadSourceBreakdown).map(([source, percentage]) => ({
+    // Format lead source breakdown from GHL data
+    const leadSources = data.ghl?.leadSources ? Object.entries(data.ghl.leadSources).map(([source, count]) => ({
       source,
-      percentage: Math.round(percentage as number),
-      formattedPercentage: formatPercentage((percentage as number) / 100)
-    })).sort((a, b) => b.percentage - a.percentage);
+      count: count as number,
+      percentage: Math.round(((count as number) / (data.ghl?.leadsYTD || 1)) * 100),
+      formattedPercentage: formatPercentage(((count as number) / (data.ghl?.leadsYTD || 1)))
+    })).sort((a, b) => b.count - a.count) : [];
 
     // Case and review metrics
     const activityMetrics = {
       newCasesSigned: {
-        weekly: data.weeklyNewCasesSigned,
+        weekly: data.newCasesSignedWeekly,
         // YTD would need to be calculated from historical data
       },
       activeCases: data.activeCases,
       googleReviews: {
-        weekly: data.weeklyGoogleReviews,
-        // YTD would need to be calculated from historical data
+        weekly: data.googleReviewsWeekly,
+        ytd: data.googleReviewsYTD
       }
     };
 
@@ -115,7 +114,7 @@ export async function GET(request: NextRequest) {
         marketing: marketingMetrics,
         leadSources,
         activity: activityMetrics,
-        lastUpdated: data.lastUpdated
+        lastUpdated: new Date().toISOString()
       }
     });
 

@@ -135,23 +135,27 @@ export default function MetricsPage() {
                                     </div>
 
                                     <div className="space-y-6">
-                                        {(data.ghl?.leadSources || []).map((source, i) => (
-                                            <div key={source.source} className="space-y-2">
+                                        {Object.entries(data.ghl?.leadSources || {}).map(([source, count], i) => {
+                                            const totalLeads = data.ghl?.leadsYTD || 1;
+                                            const percentage = Math.round((count / totalLeads) * 100);
+                                            return (
+                                            <div key={source} className="space-y-2">
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-foreground font-bold">{source.source}</span>
-                                                    <span className="text-sidebar-foreground font-medium">{source.count} Leads ({source.percentage}%)</span>
+                                                    <span className="text-foreground font-bold">{source}</span>
+                                                    <span className="text-sidebar-foreground font-medium">{count} Leads ({percentage}%)</span>
                                                 </div>
                                                 <div className="h-2 bg-sidebar-accent rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-primary/40 group-hover:bg-primary transition-all duration-500"
                                                         style={{
-                                                            width: `${source.percentage}%`,
+                                                            width: `${percentage}%`,
                                                             backgroundColor: `rgba(99, 102, 241, ${0.3 + (i * 0.2)})`
                                                         }}
                                                     />
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </AnimatedCard>

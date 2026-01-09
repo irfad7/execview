@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { AuthService } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -31,14 +32,16 @@ export async function GET(
     const service = serviceParam.toLowerCase();
     const config = CONFIGS[service as keyof typeof CONFIGS];
 
-    // Simplified auth check - get session token from cookie
+    // Get authenticated user
     const sessionToken = request.cookies.get('session')?.value;
     if (!sessionToken) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
     
-    // TODO: Validate session token and get user ID
-    const userId = 'demo-user-id'; // Placeholder until auth validation is implemented
+    const user = await AuthService.validateSession(sessionToken);
+    if (!user) {
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
 
     if (!code) {
         return NextResponse.redirect(new URL('/integrations?error=no_code', request.url));
@@ -90,21 +93,23 @@ export async function GET(
             where: {
                 service_userId: {
                     service: service,
-                    userId: userId
+                    userId: user.id
                 }
             },
             update: {
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
+                realmId: data.realmId || data.location_id || null,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()
             },
             create: {
                 service: service,
-                userId: userId,
+                userId: user.id,
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
+                realmId: data.realmId || data.location_id || null,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()

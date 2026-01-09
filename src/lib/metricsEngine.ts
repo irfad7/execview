@@ -106,11 +106,12 @@ export class MetricsEngine {
     clioToken: string,
     ghlToken: string,
     quickbooksToken: string,
-    quickbooksRealmId: string
+    quickbooksRealmId: string,
+    ghlLocationId?: string
   ) {
     this.clio = new ClioConnector(clioToken);
-    this.ghl = new GoHighLevelConnector(ghlToken);
-    this.quickbooks = new QuickBooksConnector(quickbooksToken, quickbooksRealmId);
+    this.ghl = new GoHighLevelConnector(ghlToken, ghlLocationId);
+    this.quickbooks = new QuickBooksConnector(quickbooksToken);
   }
 
   /**
@@ -141,16 +142,26 @@ export class MetricsEngine {
       this.fetchQbExpenses()
     ]);
 
+    // Extract data from responses - each connector may return different formats
+    const extractData = (response: any, fallback: any[] = []) => {
+      if (Array.isArray(response)) return response;
+      if (response?.data?.matters) return response.data.matters;
+      if (response?.data?.opportunities) return response.data.opportunities;
+      if (response?.data?.contacts) return response.data.contacts;
+      if (response?.data) return response.data;
+      return fallback;
+    };
+
     // Process data using intelligent field mapping
     const processedData = {
-      cases: this.mapClioData(clioMatters, 'cases'),
-      calendar: this.mapClioData(clioCalendarEvents, 'calendar'),
-      activities: this.mapClioData(clioActivities, 'activities'),
-      opportunities: this.mapGhlData(ghlOpportunities, 'opportunities'),
-      leads: this.mapGhlData(ghlContacts, 'leads'),
-      invoices: this.mapQbData(qbInvoices, 'revenue'),
-      payments: this.mapQbData(qbPayments, 'payments'),
-      expenses: this.mapQbData(qbExpenses, 'expenses')
+      cases: this.mapClioData(extractData(clioMatters), 'cases'),
+      calendar: this.mapClioData(extractData(clioCalendarEvents), 'calendar'),
+      activities: this.mapClioData(extractData(clioActivities), 'activities'),
+      opportunities: this.mapGhlData(extractData(ghlOpportunities), 'opportunities'),
+      leads: this.mapGhlData(extractData(ghlContacts), 'leads'),
+      invoices: this.mapQbData(extractData(qbInvoices), 'revenue'),
+      payments: this.mapQbData(extractData(qbPayments), 'payments'),
+      expenses: this.mapQbData(extractData(qbExpenses), 'expenses')
     };
 
     // Calculate all metrics
@@ -217,13 +228,13 @@ export class MetricsEngine {
       let value = this.getNestedValue(item, mapping.apiField);
 
       // Apply transformations if specified
-      if (mapping.transformation && FIELD_TRANSFORMATIONS[mapping.transformation]) {
-        value = FIELD_TRANSFORMATIONS[mapping.transformation](value);
+      if (mapping.transformation && FIELD_TRANSFORMATIONS[mapping.transformation as keyof typeof FIELD_TRANSFORMATIONS]) {
+        value = (FIELD_TRANSFORMATIONS as any)[mapping.transformation](value);
       }
 
       // Apply validations if specified
-      if (mapping.validation && FIELD_VALIDATIONS[mapping.validation]) {
-        value = FIELD_VALIDATIONS[mapping.validation](value);
+      if (mapping.validation && FIELD_VALIDATIONS[mapping.validation as keyof typeof FIELD_VALIDATIONS]) {
+        value = (FIELD_VALIDATIONS as any)[mapping.validation](value);
       }
 
       // Convert data types

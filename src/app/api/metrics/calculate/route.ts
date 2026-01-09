@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '../../../../lib/auth';
 import { MetricsEngine } from '../../../../lib/metricsEngine';
-import { setCachedData, getApiConfigs } from '../../../../lib/dbActions';
+import { setCachedData, getApiConfigs, getCachedData } from '../../../../lib/dbActions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get API configurations
-    const apiConfigs = await getApiConfigs(user.id);
+    const apiConfigs = await getApiConfigs();
     
     const clioConfig = apiConfigs.find(config => config.service === 'clio');
-    const ghlConfig = apiConfigs.find(config => config.service === 'gohighlevel');
+    const ghlConfig = apiConfigs.find(config => config.service === 'execview');
     const qbConfig = apiConfigs.find(config => config.service === 'quickbooks');
 
     if (!clioConfig?.accessToken || !ghlConfig?.accessToken || !qbConfig?.accessToken) {
@@ -49,47 +49,21 @@ export async function POST(request: NextRequest) {
       clioConfig.accessToken,
       ghlConfig.accessToken, 
       qbConfig.accessToken,
-      qbConfig.realmId || ''
+      qbConfig.realmId || '',
+      ghlConfig.realmId || ''
     );
 
     // Calculate all metrics
     const weeklyMetrics = await metricsEngine.generateWeeklyMetrics();
 
     // Cache the calculated metrics
-    await setCachedData(
-      user.id,
-      'weekly_metrics',
-      JSON.stringify({
-        ...weeklyMetrics,
-        calculatedAt: new Date().toISOString(),
-        weekOf: getStartOfWeek().toISOString()
-      })
-    );
+    await setCachedData({
+      ...weeklyMetrics,
+      calculatedAt: new Date().toISOString(),
+      weekOf: getStartOfWeek().toISOString()
+    });
 
-    // Cache individual dashboard sections for faster loading
-    await Promise.all([
-      setCachedData(user.id, 'case_management', JSON.stringify({
-        weeklyOpenCases: weeklyMetrics.weeklyOpenCases,
-        upcomingCourtDates: weeklyMetrics.upcomingCourtDates,
-        dashboard: weeklyMetrics.caseManagementDashboard,
-        lastUpdated: new Date().toISOString()
-      })),
-      
-      setCachedData(user.id, 'bookkeeping', JSON.stringify({
-        weeklyClosedCases: weeklyMetrics.weeklyClosedCases,
-        lastUpdated: new Date().toISOString()
-      })),
-      
-      setCachedData(user.id, 'firm_metrics', JSON.stringify({
-        ...weeklyMetrics.firmMetrics,
-        lastUpdated: new Date().toISOString()
-      })),
-      
-      setCachedData(user.id, 'leads_tracking', JSON.stringify({
-        leadsSpreadsheet: weeklyMetrics.leadsSpreadsheet,
-        lastUpdated: new Date().toISOString()
-      }))
-    ]);
+    // Cache is now set above with the main dashboard data
 
     // Generate summary statistics for the response
     const summary = {
@@ -144,29 +118,29 @@ export async function GET(request: NextRequest) {
     const cacheKeys = ['weekly_metrics', 'case_management', 'bookkeeping', 'firm_metrics', 'leads_tracking'];
     const cacheStatus: { [key: string]: any } = {};
 
-    for (const key of cacheKeys) {
-      try {
-        const cached = await getCachedData(user.id, key);
-        if (cached) {
-          const data = JSON.parse(cached);
-          cacheStatus[key] = {
-            exists: true,
-            lastUpdated: data.lastUpdated || data.calculatedAt,
-            recordCount: getRecordCount(data, key)
-          };
-        } else {
-          cacheStatus[key] = {
-            exists: false,
-            lastUpdated: null,
-            recordCount: 0
-          };
-        }
-      } catch (error) {
-        cacheStatus[key] = {
+    // Get the main cached data  
+    try {
+      const cachedData = await getCachedData();
+      if (cachedData) {
+        cacheStatus['dashboard'] = {
+          exists: true,
+          lastUpdated: new Date().toISOString(),
+          recordCount: 1
+        };
+      } else {
+        cacheStatus['dashboard'] = {
           exists: false,
-          error: 'Invalid cache data'
+          lastUpdated: null,
+          recordCount: 0
         };
       }
+    } catch (error) {
+      cacheStatus['dashboard'] = {
+        exists: false,
+        lastUpdated: null,
+        recordCount: 0,
+        error: 'Failed to load'
+      };
     }
 
     return NextResponse.json({
@@ -214,9 +188,3 @@ function getRecordCount(data: any, cacheKey: string): number {
   }
 }
 
-// Import getCachedData function
-async function getCachedData(userId: string, cacheKey: string): Promise<string | null> {
-  // This should be imported from dbActions, but avoiding import issues for now
-  const { getCachedData: getCached } = await import('../../../../lib/dbActions');
-  return getCached(userId, cacheKey);
-}
