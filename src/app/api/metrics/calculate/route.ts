@@ -27,34 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get API configurations
-    const apiConfigs = await getApiConfigs();
-    
-    const clioConfig = apiConfigs.find(config => config.service === 'clio');
-    const ghlConfig = apiConfigs.find(config => config.service === 'execview');
-    const qbConfig = apiConfigs.find(config => config.service === 'quickbooks');
-
-    if (!clioConfig?.accessToken || !ghlConfig?.accessToken || !qbConfig?.accessToken) {
-      return NextResponse.json(
-        { 
-          error: 'Missing API tokens',
-          message: 'Please complete OAuth setup for all required services'
-        },
-        { status: 400 }
-      );
-    }
-
-    // Initialize metrics engine with API tokens
-    const metricsEngine = new MetricsEngine(
-      clioConfig.accessToken,
-      ghlConfig.accessToken, 
-      qbConfig.accessToken,
-      qbConfig.realmId || '',
-      ghlConfig.realmId || ''
-    );
-
-    // Calculate all metrics
-    const weeklyMetrics = await metricsEngine.generateWeeklyMetrics();
+    // Calculate all metrics using the simplified engine
+    const weeklyMetrics = await MetricsEngine.calculateWeeklyMetrics(user.id);
 
     // Cache the calculated metrics
     await setCachedData({

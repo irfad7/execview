@@ -6,14 +6,13 @@ import { Card } from "@/components/Card";
 import { Settings, RefreshCw, Key, Database, CheckCircle, XCircle, Share2, Clock } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
 import { useState, useEffect } from "react";
-import { ensureDb, getSyncStatus, saveFieldMapping, getFieldMappings } from "@/lib/dbActions";
-import { FieldMapper } from "@/components/admin/FieldMapper";
+import { ensureDb, getSyncStatus } from "@/lib/dbActions";
 import { motion } from "framer-motion";
 
 export default function AdminPage() {
     const { isAuthenticated } = useAuth();
     const [isSyncing, setIsSyncing] = useState(false);
-    const [activeTab, setActiveTab] = useState<"connections" | "mapping" | "schedule">("connections");
+    const [activeTab, setActiveTab] = useState<"connections" | "schedule">("connections");
     const [apiConfigs, setApiConfigs] = useState<any[]>([]);
     const [syncStatus, setSyncStatus] = useState<any>(null);
     const [schedule, setSchedule] = useState({ day: "Monday", time: "09:00", enabled: false });
@@ -60,26 +59,6 @@ export default function AdminPage() {
         setIsSyncing(false);
     };
 
-    const clioFields = [
-        { id: "matter_name", label: "Matter Name" },
-        { id: "case_number", label: "Case Number" },
-        { id: "case_type", label: "Case Type (e.g. Felony)" },
-        { id: "court_date", label: "Court Date" },
-        { id: "balance", label: "Outstanding Balance" },
-    ];
-
-    const ghlFields = [
-        { id: "weekly_leads", label: "Weekly Leads count" },
-        { id: "consultations", label: "Consultations count" },
-        { id: "roi", label: "ROI Calculation Field" },
-    ];
-
-    const handleSaveMapping = async (service: string, mappings: Record<string, string>) => {
-        for (const [df, sf] of Object.entries(mappings)) {
-            await saveFieldMapping(service, df, sf);
-        }
-        alert(`${service} mappings saved successfully!`);
-    };
 
     return (
         <PageTransition>
@@ -106,7 +85,6 @@ export default function AdminPage() {
                     <div className="flex gap-4 border-b border-sidebar-border relative">
                         {[
                             { id: "connections", label: "API Connections", icon: Key },
-                            { id: "mapping", label: "Field Mapping", icon: Database },
                             { id: "schedule", label: "Reporting Schedule", icon: Settings }
                         ].map((tab) => (
                             <button
@@ -128,52 +106,57 @@ export default function AdminPage() {
 
                     {activeTab === "connections" ? (
                         <>
+                            <div className="mb-8 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <CheckCircle className="w-5 h-5 text-primary" />
+                                    <h3 className="font-bold text-foreground">Enhanced API Integrations</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    All integrations now use comprehensive APIs with automatic data extraction. No manual field mapping required - everything is handled programmatically with structured TypeScript interfaces.
+                                </p>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {apiConfigs.map((config: any) => (
                                     <div key={config.service} className="group relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-bold capitalize">{config.service === 'execview' ? 'GoHighLevel' : config.service}</h3>
+                                            <div>
+                                                <h3 className="text-lg font-bold capitalize">{config.service === 'execview' ? 'GoHighLevel' : config.service}</h3>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {config.service === 'clio' && 'Matters • Bills • Calendar • Clients'}
+                                                    {config.service === 'execview' && 'Leads • Opportunities • Contacts • Pipelines'}
+                                                    {config.service === 'quickbooks' && 'P&L Reports • Invoices • Payments • Metrics'}
+                                                </p>
+                                            </div>
                                             <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.accessToken ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                                                {config.accessToken ? 'Connected' : 'Disconnected'}
+                                                {config.accessToken ? 'Connected' : 'Setup Required'}
                                             </div>
                                         </div>
                                         {config.accessToken ? (
-                                            <button
-                                                onClick={() => handleDisconnect(config.service)}
-                                                className="w-full py-2 bg-error/10 hover:bg-error/20 text-error rounded-lg text-xs font-bold transition-all"
-                                            >
-                                                Disconnect
-                                            </button>
+                                            <div className="space-y-2">
+                                                <div className="text-xs text-muted-foreground">
+                                                    Last Updated: {new Date(config.updatedAt).toLocaleString()}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDisconnect(config.service)}
+                                                    className="w-full py-2 bg-error/10 hover:bg-error/20 text-error rounded-lg text-xs font-bold transition-all"
+                                                >
+                                                    Disconnect
+                                                </button>
+                                            </div>
                                         ) : (
                                             <button
                                                 onClick={() => handleConnect(config.service)}
                                                 className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold transition-all"
                                             >
-                                                Connect Now
+                                                Connect via OAuth
                                             </button>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         </>
-                    ) : activeTab === "mapping" ? (
-                        <div className="space-y-6">
-                            <FieldMapper
-                                title="Clio Case Fields"
-                                service="clio"
-                                fields={clioFields}
-                                options={["display_number", "description", "status", "client.name", "created_at", "updated_at", "Custom Field: Discovery Received", "Custom Field: Plea Offer Received"]}
-                                onSave={(m) => handleSaveMapping("clio", m)}
-                            />
-                            <FieldMapper
-                                title="GoHighLevel Metrics"
-                                service="execview"
-                                fields={ghlFields}
-                                options={["leads", "opportunities", "contact.name", "pipeline.stage", "status", "monetaryValue", "createdAt"]}
-                                onSave={(m) => handleSaveMapping("execview", m)}
-                            />
-                        </div>
-            ) : (
+                    ) : (
             <AnimatedCard delay={0.1}>
                 <div className="glass-card max-w-2xl mx-auto">
                     <div className="p-6 border-b border-sidebar-border bg-white/5 flex items-center justify-between">

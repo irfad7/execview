@@ -14,12 +14,8 @@ export async function POST(request: NextRequest) {
       email, 
       password, 
       firmName,
-      clioClientId,
-      clioClientSecret,
-      ghlClientId,
-      ghlClientSecret,
-      qbClientId,
-      qbClientSecret,
+      practiceAreas,
+      timezone,
       annualRevenueGoal,
       annualLeadsGoal
     } = body;
@@ -48,24 +44,20 @@ export async function POST(request: NextRequest) {
       email,
       password,
       firmName,
-      clioClientId,
-      clioClientSecret,
-      ghlClientId,
-      ghlClientSecret,
-      qbClientId,
-      qbClientSecret,
+      practiceAreas: practiceAreas || ['General Practice'],
+      timezone: timezone || 'America/New_York',
       annualRevenueGoal: annualRevenueGoal || 500000,
       annualLeadsGoal: annualLeadsGoal || 1000
     });
 
-    // Generate setup report
-    const setupReport = await SingleFirmSetupService.generateSetupReport(setupResult.userId);
+    // Get setup status
+    const setupStatus = await SingleFirmSetupService.getSetupStatus(setupResult.userId);
 
     return NextResponse.json({
       success: true,
       message: 'Single firm setup completed successfully',
       setup: setupResult,
-      report: setupReport
+      status: setupStatus
     });
 
   } catch (error) {
@@ -99,15 +91,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate current setup
-    const validation = await SingleFirmSetupService.validateSingleFirmSetup(user.id);
-    const report = await SingleFirmSetupService.generateSetupReport(user.id);
+    // Get current setup status
+    const setupStatus = await SingleFirmSetupService.getSetupStatus(user.id);
+    const isComplete = await SingleFirmSetupService.isSetupComplete(user.id);
 
     return NextResponse.json({
       success: true,
       userId: user.id,
-      validation,
-      report
+      isComplete,
+      status: setupStatus
     });
 
   } catch (error) {
@@ -115,59 +107,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to validate setup',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    // Authenticate user
-    const sessionCookie = request.cookies.get('session');
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    const user = await AuthService.validateSession(sessionCookie.value);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid session' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { revenueGoal, leadsGoal } = body;
-
-    if (!revenueGoal || !leadsGoal) {
-      return NextResponse.json(
-        { error: 'Revenue goal and leads goal are required' },
-        { status: 400 }
-      );
-    }
-
-    // Update annual goals
-    await SingleFirmSetupService.updateAnnualGoals(user.id, revenueGoal, leadsGoal);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Annual goals updated successfully',
-      goals: {
-        revenue: revenueGoal,
-        leads: leadsGoal
-      }
-    });
-
-  } catch (error) {
-    console.error('Goals update error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to update goals',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
