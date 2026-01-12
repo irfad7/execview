@@ -525,8 +525,8 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                     userId,
                     isActive: true,
                     OR: [
-                        { pipelineStageName: { contains: "consult", mode: "insensitive" } },
-                        { status: { contains: "scheduled", mode: "insensitive" } }
+                        { pipelineStageName: { contains: "consult" } },
+                        { status: { contains: "scheduled" } }
                     ]
                 }
             });
@@ -536,9 +536,9 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                     userId,
                     isActive: true,
                     OR: [
-                        { status: { contains: "won", mode: "insensitive" } },
-                        { pipelineStageName: { contains: "closed", mode: "insensitive" } },
-                        { pipelineStageName: { contains: "signed", mode: "insensitive" } }
+                        { status: { contains: "won" } },
+                        { pipelineStageName: { contains: "closed" } },
+                        { pipelineStageName: { contains: "signed" } }
                     ]
                 }
             });

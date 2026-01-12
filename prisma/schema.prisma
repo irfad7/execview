@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model ApiConfig {
@@ -29,7 +28,7 @@ model FieldMapping {
   id             String   @id @default(cuid())
   service        String
   category       String   // New: cases, calendar, leads, etc.
-  mappings       String   @db.Text // JSON of field mappings
+  mappings       String   // JSON of field mappings
   updatedAt      DateTime @default(now()) @map("updated_at")
   
   userId         String   @map("user_id")
@@ -40,7 +39,7 @@ model FieldMapping {
 model DashboardCache {
   id        Int      @id @default(autoincrement())
   cacheKey  String   @map("cache_key") // New: allows multiple cache entries
-  cacheData String   @map("cache_data") @db.Text
+  cacheData String   @map("cache_data")
   updatedAt DateTime @default(now()) @map("updated_at")
   
   userId    String   @map("user_id")
@@ -65,7 +64,7 @@ model Log {
   service   String
   level     String
   message   String
-  details   String?  @db.Text
+  details   String?
   createdAt DateTime @default(now()) @map("created_at")
   
   userId    String   @map("user_id")
@@ -74,7 +73,7 @@ model Log {
 model SystemSettings { // Fixed table name
   id        String   @id @default(cuid()) // Added proper ID
   settingKey String  @map("setting_key")
-  settingValue String @map("setting_value") @db.Text
+  settingValue String @map("setting_value")
   updatedAt DateTime @default(now()) @map("updated_at")
   
   userId    String   @map("user_id")
@@ -110,9 +109,9 @@ model Profile {
   firmName      String?  @map("firm_name")
   email         String?
   phone         String?
-  practiceAreas String?  @map("practice_areas") @db.Text // JSON array
+  practiceAreas String?  @map("practice_areas") // JSON array
   timezone      String?
-  businessHours String?  @map("business_hours") @db.Text // JSON object
+  businessHours String?  @map("business_hours") // JSON object
   updatedAt     DateTime @default(now()) @map("updated_at")
   
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -124,12 +123,12 @@ model GHLLocation {
   locationId  String   @unique @map("location_id") // GHL location ID
   name        String
   companyName String?  @map("company_name")
-  address     String?  @db.Text
+  address     String?
   phone       String?
   email       String?
   website     String?
   timezone    String?
-  settings    String?  @db.Text // JSON object for location-specific settings
+  settings    String?  // JSON object for location-specific settings
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -151,8 +150,8 @@ model GHLContact {
   email       String?
   phone       String?
   source      String?
-  tags        String?  @db.Text // JSON array
-  customFields String? @map("custom_fields") @db.Text // JSON object
+  tags        String?  // JSON array
+  customFields String? @map("custom_fields") // JSON object
   dateAdded   DateTime @map("date_added")
   lastActivity DateTime? @map("last_activity")
   isActive    Boolean  @default(true) @map("is_active")
@@ -185,8 +184,8 @@ model GHLOpportunity {
   dateCreated     DateTime @map("date_created")
   lastStatusChange DateTime? @map("last_status_change")
   expectedCloseDate DateTime? @map("expected_close_date")
-  notes           String?  @db.Text
-  customFields    String?  @map("custom_fields") @db.Text // JSON object
+  notes           String?
+  customFields    String?  @map("custom_fields") // JSON object
   isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -207,7 +206,7 @@ model GHLPipeline {
   id          String   @id @default(cuid())
   pipelineId  String   @unique @map("pipeline_id") // GHL pipeline ID
   name        String
-  stages      String   @db.Text // JSON array of pipeline stages
+  stages      String   // JSON array of pipeline stages
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -225,10 +224,10 @@ model GHLWebhook {
   eventType   String   @map("event_type")
   objectId    String   @map("object_id") // Contact/Opportunity ID
   locationId  String   @map("location_id")
-  payload     String   @db.Text // Full webhook payload as JSON
+  payload     String   // Full webhook payload as JSON
   processed   Boolean  @default(false)
   processedAt DateTime? @map("processed_at")
-  errorMessage String? @map("error_message") @db.Text
+  errorMessage String? @map("error_message")
   createdAt   DateTime @default(now()) @map("created_at")
   
   userId      String   @map("user_id")
