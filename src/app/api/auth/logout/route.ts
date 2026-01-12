@@ -5,14 +5,14 @@ import { cookies } from 'next/headers';
 export async function POST(request: NextRequest) {
     try {
         const cookieStore = await cookies();
-        const token = cookieStore.get('session_token')?.value;
+        const token = cookieStore.get('session')?.value;
 
         if (token) {
             await AuthService.deleteSession(token);
         }
 
         // Clear the cookie
-        cookieStore.delete('session_token');
+        cookieStore.delete('session');
 
         return NextResponse.json({ success: true });
 

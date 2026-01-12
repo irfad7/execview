@@ -1,13 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
+import { User } from "@/lib/auth";
 import { useRouter, usePathname } from "next/navigation";
 
 interface AuthContextType {
     user: User | null;
-    session: Session | null;
+    session: string | null;
     isAuthenticated: boolean;
     loading: boolean;
     signOut: () => Promise<void>;
@@ -23,34 +22,49 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [session, setSession] = useState<Session | null>(null);
+    const [session, setSession] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const pathname = usePathname();
-    const supabase = createClient();
 
+    // Check for existing session on mount
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
-
-            if (event === 'SIGNED_IN') {
-                router.refresh();
+        const checkSession = async () => {
+            try {
+                const response = await fetch('/api/auth/session', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.user) {
+                        setUser(data.user);
+                        setSession(data.sessionToken || 'authenticated');
+                    }
+                }
+            } catch (error) {
+                console.error('Session check failed:', error);
+            } finally {
+                setLoading(false);
             }
-            if (event === 'SIGNED_OUT') {
-                router.refresh();
-                router.push('/login');
-            }
-        });
-
-        return () => {
-            subscription.unsubscribe();
         };
-    }, [router, supabase]);
+
+        checkSession();
+    }, []);
 
     const signOut = async () => {
-        await supabase.auth.signOut();
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            setUser(null);
+            setSession(null);
+            router.push('/login');
+        } catch (error) {
+            console.error('Sign out failed:', error);
+        }
     };
 
     // Protected route logic
