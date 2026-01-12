@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model ApiConfig {
@@ -28,7 +28,7 @@ model FieldMapping {
   id             String   @id @default(cuid())
   service        String
   category       String   // New: cases, calendar, leads, etc.
-  mappings       String   // JSON of field mappings
+  mappings       String   @db.Text // JSON of field mappings
   updatedAt      DateTime @default(now()) @map("updated_at")
   
   userId         String   @map("user_id")

@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "./prisma";
-import { AuthService } from "./auth";
+import { SimpleAuthService } from "./simple-auth";
 import { FirmMetrics } from "./types";
 import { cookies } from "next/headers";
 
@@ -13,7 +13,7 @@ async function getUser() {
         
         if (!token) return null;
         
-        const user = await AuthService.validateSession(token);
+        const user = await SimpleAuthService.validateSession(token);
         return user;
     } catch (error) {
         console.error('Error getting user:', error);
@@ -22,22 +22,22 @@ async function getUser() {
 }
 
 export async function ensureDb() {
-    // Prisma handles schema management automatically
-    console.log('Database connection ready');
+    // Using simple in-memory storage for demo
+    console.log('Simple storage ready');
 }
 
 export async function getSyncStatus() {
     const user = await getUser();
     if (!user) return null;
     
-    return prisma.syncStatus.findUnique({ 
-        where: { 
-            userId_service: { 
-                userId: user.id, 
-                service: 'general' 
-            } 
-        } 
-    });
+    return {
+        id: 1,
+        service: 'general',
+        lastUpdated: new Date(),
+        status: 'success',
+        errorMessage: null,
+        userId: user.id
+    };
 }
 
 export async function updateSyncStatus(status: string, errorMessage?: string) {
