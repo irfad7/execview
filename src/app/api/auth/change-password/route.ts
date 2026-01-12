@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SimpleAuthService } from '@/lib/simple-auth';
+import { AuthService } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate session
-        const user = await SimpleAuthService.validateSession(token);
+        const user = await AuthService.validateSession(token);
         if (!user) {
             return NextResponse.json(
                 { error: 'Invalid session' },
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify current password
-        const isCurrentValid = await SimpleAuthService.authenticateWithPassword(currentPassword);
+        const isCurrentValid = await AuthService.authenticateWithPassword(currentPassword);
         if (!isCurrentValid) {
             return NextResponse.json(
                 { error: 'Current password is incorrect' },
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update password
-        const success = await SimpleAuthService.updatePassword(user.id, newPassword);
+        const success = await AuthService.updatePassword(user.id, newPassword);
         if (!success) {
             return NextResponse.json(
                 { error: 'Failed to update password' },

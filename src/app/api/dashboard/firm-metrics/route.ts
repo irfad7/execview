@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SimpleAuthService } from '../../../../lib/simple-auth';
-import { getCachedData } from '../../../../lib/simple-dbActions';
+import { AuthService } from '../../../../lib/auth';
+import { getCachedData } from '../../../../lib/dbActions';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await SimpleAuthService.validateSession(sessionCookie.value);
+    const user = await AuthService.validateSession(sessionCookie.value);
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid session' },

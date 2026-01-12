@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SimpleAuthService } from '@/lib/simple-auth';
+import { AuthService } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
     try {
-        // Ensure default user exists
-        await SimpleAuthService.ensureDefaultUser();
-        
         const { email, password } = await request.json();
 
         if (!password) {
@@ -17,7 +14,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Use password-only authentication for single firm system
-        const user = await SimpleAuthService.authenticateWithPassword(password);
+        const user = await AuthService.authenticateWithPassword(password);
         
         if (!user) {
             return NextResponse.json(
@@ -26,7 +23,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const token = await SimpleAuthService.createSession(user.id);
+        const token = await AuthService.createSession(user.id);
         
         // Set HTTP-only cookie with correct name 'session' (not 'session_token')
         const cookieStore = await cookies();
