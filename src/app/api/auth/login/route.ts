@@ -4,29 +4,33 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
     try {
+        // Ensure default user exists
+        await AuthService.ensureDefaultUser();
+        
         const { email, password } = await request.json();
 
-        if (!email || !password) {
+        if (!password) {
             return NextResponse.json(
-                { error: 'Email and password are required' },
+                { error: 'Password is required' },
                 { status: 400 }
             );
         }
 
-        const user = await AuthService.verifyPassword(email, password);
+        // Use password-only authentication for single firm system
+        const user = await AuthService.authenticateWithPassword(password);
         
         if (!user) {
             return NextResponse.json(
-                { error: 'Invalid email or password' },
+                { error: 'Invalid password' },
                 { status: 401 }
             );
         }
 
         const token = await AuthService.createSession(user.id);
         
-        // Set HTTP-only cookie
+        // Set HTTP-only cookie with correct name 'session' (not 'session_token')
         const cookieStore = await cookies();
-        cookieStore.set('session_token', token, {
+        cookieStore.set('session', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

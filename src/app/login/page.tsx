@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Lock, ArrowRight, Mail, Loader2 } from "lucide-react";
+import { Briefcase, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("admin@lawfirm.com");
-    const [password, setPassword] = useState("admin123");
+    const [password, setPassword] = useState("MLA@2026");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
     const router = useRouter();
@@ -21,7 +20,7 @@ export default function LoginPage() {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ password }),
             });
 
             const data = await response.json();
@@ -59,24 +58,7 @@ export default function LoginPage() {
 
                     <form onSubmit={handleAuth} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-bold text-foreground mb-2 px-1">Email Address</label>
-                            <div className="relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sidebar-foreground">
-                                    <Mail className="w-5 h-5" />
-                                </div>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    className="w-full bg-white/5 border border-sidebar-border rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-                                    placeholder="name@firm.com"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-foreground mb-2 px-1">Password</label>
+                            <label className="block text-sm font-bold text-foreground mb-2 px-1">Access Password</label>
                             <div className="relative">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sidebar-foreground">
                                     <Lock className="w-5 h-5" />
@@ -87,7 +69,7 @@ export default function LoginPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     className="w-full bg-white/5 border border-sidebar-border rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-                                    placeholder="Enter your password"
+                                    placeholder="Enter access password"
                                 />
                             </div>
                         </div>
@@ -118,15 +100,15 @@ export default function LoginPage() {
 
                     <div className="mt-6 text-center">
                         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                            <p className="text-xs text-primary font-bold mb-2">Demo Credentials</p>
-                            <p className="text-xs text-zinc-400">Email: admin@lawfirm.com</p>
-                            <p className="text-xs text-zinc-400">Password: admin123</p>
+                            <p className="text-xs text-primary font-bold mb-2">My Legal Academy</p>
+                            <p className="text-xs text-zinc-400">Single Firm System</p>
+                            <p className="text-xs text-zinc-400">Default Password: MLA@2026</p>
                         </div>
                     </div>
                 </div>
 
                 <p className="text-center text-sidebar-foreground text-xs mt-8 font-medium">
-                    Local SQLite Database
+                    My Legal Academy Portal
                 </p>
             </motion.div>
         </div>

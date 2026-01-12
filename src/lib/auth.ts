@@ -40,10 +40,18 @@ export class AuthService {
         };
     }
 
-    static async verifyPassword(email: string, password: string): Promise<User | null> {
-        const user = await prisma.user.findUnique({
-            where: { email }
-        });
+    static async verifyPassword(password: string, email?: string): Promise<User | null> {
+        // For single firm system, get the first user (should only be one)
+        // If email provided, use it for backward compatibility
+        let user;
+        if (email) {
+            user = await prisma.user.findUnique({
+                where: { email }
+            });
+        } else {
+            // Get the first user (single firm system)
+            user = await prisma.user.findFirst();
+        }
         
         if (!user) return null;
         
@@ -56,6 +64,35 @@ export class AuthService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         };
+    }
+
+    // New method for password-only authentication (single firm)
+    static async authenticateWithPassword(password: string): Promise<User | null> {
+        return this.verifyPassword(password);
+    }
+
+    // Method to update password
+    static async updatePassword(userId: string, newPassword: string): Promise<boolean> {
+        try {
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await prisma.user.update({
+                where: { id: userId },
+                data: { password: hashedPassword }
+            });
+            return true;
+        } catch (error) {
+            console.error('Failed to update password:', error);
+            return false;
+        }
+    }
+
+    // Initialize default user if none exists
+    static async ensureDefaultUser(): Promise<void> {
+        const userCount = await prisma.user.count();
+        if (userCount === 0) {
+            await this.createUser('admin@mylegalacademy.com', 'MLA@2026');
+            console.log('Default user created with password: MLA@2026');
+        }
     }
 
     static async createSession(userId: string): Promise<string> {

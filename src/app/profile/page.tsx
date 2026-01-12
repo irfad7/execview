@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/Header";
 import { Card } from "@/components/Card";
-import { User, Mail, Building2, Phone, Save, ArrowLeft } from "lucide-react";
+import { User, Mail, Building2, Phone, Save, ArrowLeft, Lock, Key } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
 import { useState, useEffect } from "react";
 import { getProfile, updateProfile } from "@/lib/dbActions";
@@ -15,7 +15,14 @@ export default function ProfilePage() {
         email: "",
         phone: ""
     });
+    const [passwordChange, setPasswordChange] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+    });
     const [isSaving, setIsSaving] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
 
     useEffect(() => {
         getProfile().then(p => {
@@ -33,9 +40,57 @@ export default function ProfilePage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        await updateProfile(profile);
-        setIsSaving(false);
-        alert("Profile updated successfully!");
+        setMessage(null);
+        try {
+            await updateProfile(profile);
+            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to update profile' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsChangingPassword(true);
+        setMessage(null);
+
+        if (passwordChange.newPassword !== passwordChange.confirmPassword) {
+            setMessage({ type: 'error', text: 'New passwords do not match' });
+            setIsChangingPassword(false);
+            return;
+        }
+
+        if (passwordChange.newPassword.length < 6) {
+            setMessage({ type: 'error', text: 'New password must be at least 6 characters long' });
+            setIsChangingPassword(false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: passwordChange.currentPassword,
+                    newPassword: passwordChange.newPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to change password');
+            }
+
+            setMessage({ type: 'success', text: 'Password changed successfully!' });
+            setPasswordChange({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setIsChangingPassword(false);
+        }
     };
 
     return (
@@ -54,8 +109,18 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
+                    {message && (
+                        <div className={`p-4 rounded-xl ${message.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
                     <AnimatedCard>
                         <div className="glass-card p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <User className="w-5 h-5 text-primary" />
+                                <h3 className="text-lg font-bold text-foreground">Profile Information</h3>
+                            </div>
                             <form onSubmit={handleSave} className="space-y-6">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -127,6 +192,76 @@ export default function ProfilePage() {
                                 >
                                     <Save className="w-4 h-4" />
                                     {isSaving ? "Saving Changes..." : "Save Profile Information"}
+                                </button>
+                            </form>
+                        </div>
+                    </AnimatedCard>
+
+                    <AnimatedCard>
+                        <div className="glass-card p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <Lock className="w-5 h-5 text-primary" />
+                                <h3 className="text-lg font-bold text-foreground">Change Password</h3>
+                            </div>
+                            <form onSubmit={handlePasswordChange} className="space-y-6">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-sidebar-foreground uppercase tracking-widest pl-1">Current Password</label>
+                                        <div className="relative">
+                                            <Key className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sidebar-foreground" />
+                                            <input
+                                                type="password"
+                                                value={passwordChange.currentPassword}
+                                                onChange={e => setPasswordChange({ ...passwordChange, currentPassword: e.target.value })}
+                                                className="w-full bg-sidebar-background border border-sidebar-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                placeholder="Enter current password"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-sidebar-foreground uppercase tracking-widest pl-1">New Password</label>
+                                            <div className="relative">
+                                                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sidebar-foreground" />
+                                                <input
+                                                    type="password"
+                                                    value={passwordChange.newPassword}
+                                                    onChange={e => setPasswordChange({ ...passwordChange, newPassword: e.target.value })}
+                                                    className="w-full bg-sidebar-background border border-sidebar-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                    placeholder="Enter new password"
+                                                    required
+                                                    minLength={6}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-sidebar-foreground uppercase tracking-widest pl-1">Confirm New Password</label>
+                                            <div className="relative">
+                                                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sidebar-foreground" />
+                                                <input
+                                                    type="password"
+                                                    value={passwordChange.confirmPassword}
+                                                    onChange={e => setPasswordChange({ ...passwordChange, confirmPassword: e.target.value })}
+                                                    className="w-full bg-sidebar-background border border-sidebar-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none transition-all"
+                                                    placeholder="Confirm new password"
+                                                    required
+                                                    minLength={6}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isChangingPassword}
+                                    className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all disabled:opacity-50 shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
+                                >
+                                    <Key className="w-4 h-4" />
+                                    {isChangingPassword ? "Changing Password..." : "Change Password"}
                                 </button>
                             </form>
                         </div>
