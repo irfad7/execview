@@ -55,8 +55,17 @@ export default function AdminPage() {
 
     const handleManualSync = async () => {
         setIsSyncing(true);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsSyncing(false);
+        try {
+            const { refreshDashboardData } = await import("@/lib/dbActions");
+            await refreshDashboardData();
+            alert("Sync complete! Refreshing page...");
+            window.location.reload();
+        } catch (error) {
+            console.error("Sync failed:", error);
+            alert("Sync failed: " + (error instanceof Error ? error.message : "Unknown error"));
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
 

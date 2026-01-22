@@ -99,7 +99,7 @@ export async function GET(
             update: {
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
-                realmId: data.realmId || data.location_id || null,
+                realmId: data.realmId || data.locationId || data.location_id || null,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()
@@ -109,7 +109,7 @@ export async function GET(
                 userId: user.id,
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
-                realmId: data.realmId || data.location_id || null,
+                realmId: data.realmId || data.locationId || data.location_id || null,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()
