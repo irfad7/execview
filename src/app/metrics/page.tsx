@@ -112,7 +112,7 @@ export default function MetricsPage() {
                                     <div className="space-y-3">
                                         <div className="flex justify-between text-xs font-semibold">
                                             <span className="text-sidebar-foreground">Conversion Rate</span>
-                                            <span className="text-success">{((data.ghl?.conversionRate || 0) * 100).toFixed(1)}%</span>
+                                            <span className="text-success">{(data.ghl?.conversionRate || 0).toFixed(1)}%</span>
                                         </div>
                                         <div className="h-1.5 bg-sidebar-accent rounded-full overflow-hidden">
                                             <div className="h-full bg-success w-[15%]" />
@@ -166,8 +166,6 @@ export default function MetricsPage() {
                                     <MetricCard
                                         title="Weekly Leads"
                                         value={data.ghl?.leadsWeekly || 0}
-                                        trend="up"
-                                        trendValue="12%"
                                         icon={<Users className="w-4 h-4" />}
                                     />
                                 </AnimatedCard>
@@ -175,8 +173,6 @@ export default function MetricsPage() {
                                     <MetricCard
                                         title="Consultations"
                                         value={data.ghl?.consultationsWeekly || 0}
-                                        trend="up"
-                                        trendValue="5%"
                                         icon={<BarChart className="w-4 h-4 text-warning" />}
                                     />
                                 </AnimatedCard>

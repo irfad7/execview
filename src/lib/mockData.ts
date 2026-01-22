@@ -61,12 +61,17 @@ const MOCK_CLIO_CASES: ClioCase[] = [
 const MOCK_GHL_METRICS: GHLMetric = {
     leadsWeekly: 24,
     leadsYTD: 1150,
+    opportunitiesWeekly: 13,
+    opportunitiesYTD: 62,
+    totalOpportunities: 62,
+    totalContacts: 1150,
     consultsScheduled: 42,
     retainersSigned: 12,
     adSpend: 5000,
     feesCollected: 25000,
     consultationsWeekly: 12,
-    conversionRate: 0.15,
+    conversionRate: 15.5,
+    closeRate: 28.6,
     roi: 4.2,
     leadSources: {
         "Google LSA": 12,
@@ -75,8 +80,8 @@ const MOCK_GHL_METRICS: GHLMetric = {
         "Other": 2
     },
     opportunityFeed: [
-        { id: "L1", contactName: "Robert Brown", date: "2025-12-23", timeOnPhone: "12m", pipelineStage: "Discovery", source: "Google LSA", owner: "Ivy" },
-        { id: "L2", contactName: "Sarah Miller", date: "2025-12-23", timeOnPhone: "8m", pipelineStage: "Scheduled", source: "Website", owner: "Ivy" }
+        { id: "L1", lead: "Robert Brown", contactName: "Robert Brown", date: "2025-12-23", timeOnPhone: "12m", stage: "Discovery", pipelineStage: "Discovery", source: "Google LSA", owner: "Ivy" },
+        { id: "L2", lead: "Sarah Miller", contactName: "Sarah Miller", date: "2025-12-23", timeOnPhone: "8m", stage: "Scheduled", pipelineStage: "Scheduled", source: "Website", owner: "Ivy" }
     ],
     avgTimeOnPhone: "14m"
 };

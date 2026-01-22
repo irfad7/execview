@@ -11,7 +11,8 @@ import {
     ExternalLink,
     Briefcase,
     Users,
-    Star
+    Calendar,
+    AlertCircle
 } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
 
@@ -49,6 +50,15 @@ export default function OverviewPage() {
         );
     }
 
+    // Calculate real metrics from data
+    const clioData = data.clio || [];
+    const urgentCases = clioData.filter(c => !c.discoveryReceived || !c.pleaOfferReceived);
+    const casesWithCourtDates = clioData.filter(c => c.upcomingCourtDate);
+    const activeCases = data.activeCases || clioData.length || 0;
+    const weeklyLeads = data.ghl?.leadsWeekly || 0;
+    const ytdRevenue = data.qb?.revenueYTD || 0;
+    const weeklyOpportunities = data.ghl?.opportunitiesWeekly || 0;
+
     return (
         <PageTransition>
             <div className="flex-1 flex flex-col">
@@ -61,8 +71,11 @@ export default function OverviewPage() {
                             <div className="relative z-10">
                                 <h1 className="text-3xl font-extrabold text-white mb-2 font-display">Welcome back, Counselor.</h1>
                                 <p className="text-zinc-400 max-w-lg">
-                                    The firm is performing at <span className="text-success font-bold">115%</span> of its weekly target.
-                                    You have <span className="text-white font-bold">2 urgent court dates</span> this week.
+                                    You have <span className="text-white font-bold">{activeCases} active cases</span> and{' '}
+                                    <span className="text-white font-bold">{weeklyLeads} leads</span> this week.
+                                    {urgentCases.length > 0 && (
+                                        <span className="text-warning"> {urgentCases.length} cases need attention.</span>
+                                    )}
                                 </p>
 
                                 <div className="flex gap-4 mt-8">
@@ -93,63 +106,72 @@ export default function OverviewPage() {
                         <AnimatedCard delay={0.2}>
                             <MetricCard
                                 title="YTD Revenue"
-                                value={`$${(data.qb?.revenueYTD || 0).toLocaleString()}`}
-                                trend="up"
-                                trendValue="24%"
+                                value={ytdRevenue > 0 ? `$${ytdRevenue.toLocaleString()}` : "—"}
                                 icon={<TrendingUp className="w-4 h-4" />}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.3}>
                             <MetricCard
                                 title="Active Cases"
-                                value={data.activeCases}
+                                value={activeCases}
                                 icon={<Briefcase className="w-4 h-4 text-primary" />}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.4}>
                             <MetricCard
                                 title="Weekly Leads"
-                                value={data.ghl?.leadsWeekly || 0}
-                                trend="up"
-                                trendValue="8%"
+                                value={weeklyLeads}
                                 icon={<Users className="w-4 h-4" />}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.5}>
                             <MetricCard
-                                title="Consultation ROI"
-                                value="4.2x"
+                                title="Weekly Opportunities"
+                                value={weeklyOpportunities}
                                 icon={<BarChart2 className="w-4 h-4" />}
                             />
                         </AnimatedCard>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Recent Activity / Tasks */}
+                        {/* Cases Needing Attention */}
                         <AnimatedCard delay={0.6}>
                             <div className="glass-card p-6 h-full">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-lg font-semibold text-white">Critical Reminders</h3>
-                                    <span className="text-xs text-primary font-bold uppercase tracking-widest">Urgent</span>
+                                    <h3 className="text-lg font-semibold text-white">Cases Needing Attention</h3>
+                                    {urgentCases.length > 0 && (
+                                        <span className="text-xs text-warning font-bold uppercase tracking-widest">{urgentCases.length} Items</span>
+                                    )}
                                 </div>
 
                                 <div className="space-y-4">
-                                    {(data.clio || []).filter(c => !c.discoveryReceived || !c.pleaOfferReceived).slice(0, 3).map((item) => (
-                                        <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group">
-                                            <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error">
-                                                <Clock className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-sm font-bold text-zinc-200">{item.name}</div>
-                                                <div className="text-xs text-zinc-500">
-                                                    Missing {!item.discoveryReceived ? "Discovery" : "Plea Offer"}
+                                    {urgentCases.length > 0 ? (
+                                        urgentCases.slice(0, 4).map((item) => (
+                                            <div key={item.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group">
+                                                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning">
+                                                    <AlertCircle className="w-5 h-5" />
                                                 </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-bold text-zinc-200">{item.name}</div>
+                                                    <div className="text-xs text-zinc-500">
+                                                        {!item.discoveryReceived && !item.pleaOfferReceived
+                                                            ? "Missing Discovery & Plea Offer"
+                                                            : !item.discoveryReceived
+                                                                ? "Missing Discovery"
+                                                                : "Missing Plea Offer"}
+                                                    </div>
+                                                </div>
+                                                <button className="text-zinc-500 group-hover:text-white transition-colors">
+                                                    <ExternalLink className="w-4 h-4" />
+                                                </button>
                                             </div>
-                                            <button className="text-zinc-500 group-hover:text-white transition-colors">
-                                                <ExternalLink className="w-4 h-4" />
-                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-8 text-zinc-500">
+                                            <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                            <p>No urgent items</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         </AnimatedCard>
@@ -158,22 +180,17 @@ export default function OverviewPage() {
                         <div className="grid grid-cols-2 gap-6">
                             <AnimatedCard delay={0.7}>
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
-                                    <div className="text-zinc-500 text-sm mb-4 font-medium">Lead Velocity</div>
-                                    <div className="text-3xl font-bold text-white mb-2">2.4 / day</div>
-                                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary w-2/3" />
-                                    </div>
+                                    <div className="text-zinc-500 text-sm mb-4 font-medium">Retainers Signed</div>
+                                    <div className="text-3xl font-bold text-white mb-2">{data.ghl?.retainersSigned || 0}</div>
+                                    <div className="text-xs text-zinc-500">This week</div>
                                 </div>
                             </AnimatedCard>
 
                             <AnimatedCard delay={0.8}>
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
-                                    <div className="text-zinc-500 text-sm mb-4 font-medium">Google Business</div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="text-3xl font-bold text-white">4.9</div>
-                                        <Star className="w-5 h-5 fill-warning text-warning" />
-                                    </div>
-                                    <div className="text-xs text-zinc-500">+{data.googleReviewsWeekly} reviews this week</div>
+                                    <div className="text-zinc-500 text-sm mb-4 font-medium">Consultations</div>
+                                    <div className="text-3xl font-bold text-white mb-2">{data.ghl?.consultsScheduled || 0}</div>
+                                    <div className="text-xs text-zinc-500">Scheduled this week</div>
                                 </div>
                             </AnimatedCard>
 
@@ -183,17 +200,17 @@ export default function OverviewPage() {
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="text-zinc-500 text-sm mb-1 font-medium">New Signed Cases</div>
-                                                <div className="text-2xl font-bold text-white">{data.newCasesSignedWeekly}</div>
+                                                <div className="text-2xl font-bold text-white">{data.newCasesSignedWeekly || 0}</div>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">
                                                     <div className="text-[10px] text-zinc-500 uppercase tracking-tighter">YTD Total</div>
-                                                    <div className="text-primary font-bold">{data.newCasesSignedYTD}</div>
+                                                    <div className="text-primary font-bold">{data.newCasesSignedYTD || 0}</div>
                                                 </div>
                                                 <div className="w-px h-8 bg-white/10" />
                                                 <div className="text-right">
-                                                    <div className="text-[10px] text-zinc-500 uppercase tracking-tighter">Weekly Trend</div>
-                                                    <div className="text-success font-bold">+12%</div>
+                                                    <div className="text-[10px] text-zinc-500 uppercase tracking-tighter">Cases Closed</div>
+                                                    <div className="text-success font-bold">{data.qb?.closedCasesWeekly || 0}</div>
                                                 </div>
                                             </div>
                                         </div>

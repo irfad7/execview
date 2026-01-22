@@ -10,6 +10,14 @@ export class GoHighLevelConnector extends BaseConnector {
         this.locationId = locationId || null;
     }
 
+    private getHeaders() {
+        return {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Version': '2021-04-15', // Correct V2 API version
+            'Content-Type': 'application/json'
+        };
+    }
+
     async fetchMetrics() {
         if (!this.accessToken) {
             throw new Error("GoHighLevel not configured - missing access token");
@@ -19,103 +27,172 @@ export class GoHighLevelConnector extends BaseConnector {
             throw new Error("GoHighLevel not configured - missing location ID");
         }
 
-        // Fetch opportunities (leads) with location ID
-        const opportunitiesResponse = await fetch(`${this.baseUrl}/opportunities/search?limit=100&location_id=${this.locationId}`, {
-            headers: {
-                'Authorization': `Bearer ${this.accessToken}`,
-                'Version': '2021-07-28',
-                'Content-Type': 'application/json'
-            }
-        });
+        console.log("GHL: Fetching data for location:", this.locationId);
 
-        if (!opportunitiesResponse.ok) {
-            console.error("GHL Opportunities API Error:", opportunitiesResponse.status, await opportunitiesResponse.text());
-            throw new Error(`GHL Opportunities API Error: ${opportunitiesResponse.status}`);
+        // Fetch opportunities using GET with query params (correct GHL API v2 format)
+        let opportunities: any[] = [];
+        try {
+            const oppUrl = `${this.baseUrl}/opportunities/search?location_id=${this.locationId}&limit=100`;
+            console.log("GHL: Fetching opportunities from:", oppUrl);
+
+            const opportunitiesResponse = await fetch(oppUrl, {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+
+            if (opportunitiesResponse.ok) {
+                const opportunitiesData = await opportunitiesResponse.json();
+                opportunities = opportunitiesData.opportunities || [];
+                console.log("GHL: Found", opportunities.length, "opportunities");
+            } else {
+                const errorText = await opportunitiesResponse.text();
+                console.error("GHL Opportunities API Error:", opportunitiesResponse.status, errorText);
+
+                // Try alternative endpoint format
+                const altUrl = `${this.baseUrl}/opportunities/?locationId=${this.locationId}&limit=100`;
+                console.log("GHL: Trying alternative URL:", altUrl);
+
+                const altResponse = await fetch(altUrl, {
+                    method: 'GET',
+                    headers: this.getHeaders()
+                });
+
+                if (altResponse.ok) {
+                    const altData = await altResponse.json();
+                    opportunities = altData.opportunities || [];
+                    console.log("GHL: Found", opportunities.length, "opportunities (alt endpoint)");
+                } else {
+                    console.error("GHL Alt Opportunities Error:", altResponse.status, await altResponse.text());
+                }
+            }
+        } catch (error) {
+            console.error("GHL Opportunities fetch error:", error);
         }
 
-        const opportunitiesData = await opportunitiesResponse.json();
-        const opportunities = opportunitiesData.opportunities || [];
+        // Fetch contacts
+        let contacts: any[] = [];
+        try {
+            const contactsUrl = `${this.baseUrl}/contacts/?locationId=${this.locationId}&limit=100`;
+            console.log("GHL: Fetching contacts from:", contactsUrl);
 
-        // Fetch contacts for lead sources
-        const contactsResponse = await fetch(`${this.baseUrl}/contacts/?locationId=${this.locationId}&limit=100`, {
-            headers: {
-                'Authorization': `Bearer ${this.accessToken}`,
-                'Version': '2021-07-28',
-                'Content-Type': 'application/json'
+            const contactsResponse = await fetch(contactsUrl, {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+
+            if (contactsResponse.ok) {
+                const contactsData = await contactsResponse.json();
+                contacts = contactsData.contacts || [];
+                console.log("GHL: Found", contacts.length, "contacts");
+            } else {
+                const errorText = await contactsResponse.text();
+                console.error("GHL Contacts API Error:", contactsResponse.status, errorText);
             }
-        });
-
-        let contacts = [];
-        if (contactsResponse.ok) {
-            const contactsData = await contactsResponse.json();
-            contacts = contactsData.contacts || [];
+        } catch (error) {
+            console.error("GHL Contacts fetch error:", error);
         }
 
         // Calculate metrics
         const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-        const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
-        
-        const recentOpportunities = opportunities.filter((o: any) => 
-            new Date(o.dateCreated || o.createdAt).getTime() > oneWeekAgo
-        );
-        
-        const ytdOpportunities = opportunities.filter((o: any) => 
-            new Date(o.dateCreated || o.createdAt).getTime() > oneYearAgo
-        );
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1).getTime();
 
-        const recentContacts = contacts.filter((c: any) => 
-            new Date(c.dateAdded || c.createdAt).getTime() > oneWeekAgo
-        );
+        const recentOpportunities = opportunities.filter((o: any) => {
+            const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();
+            return date > oneWeekAgo;
+        });
+
+        const ytdOpportunities = opportunities.filter((o: any) => {
+            const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();
+            return date > startOfYear;
+        });
+
+        const recentContacts = contacts.filter((c: any) => {
+            const date = new Date(c.dateAdded || c.createdAt).getTime();
+            return date > oneWeekAgo;
+        });
+
+        const ytdContacts = contacts.filter((c: any) => {
+            const date = new Date(c.dateAdded || c.createdAt).getTime();
+            return date > startOfYear;
+        });
 
         // Map lead sources
         const leadSourceMap: { [key: string]: number } = {};
         contacts.forEach((contact: any) => {
-            const source = contact.source || contact.leadSource || 'Unknown';
+            const source = contact.source || contact.tags?.[0] || 'Direct';
             leadSourceMap[source] = (leadSourceMap[source] || 0) + 1;
         });
 
         // Intelligent Mapping for Opportunity Feed
         const opportunityFeed = opportunities.slice(0, 50).map((o: any) => {
             const contact = contacts.find((c: any) => c.id === o.contactId);
+            const contactName = o.name || contact?.name ||
+                (contact?.firstName && contact?.lastName ? `${contact.firstName} ${contact.lastName}` : null) ||
+                contact?.firstName || "Unknown";
+
             return {
                 id: o.id,
-                contactName: contact?.name || o.name || "Unknown Lead",
-                date: o.dateCreated || o.createdAt ? new Date(o.dateCreated || o.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                timeOnPhone: "0m", // TODO: Implement call logs integration
-                pipelineStage: o.pipelineStageName || o.status || "Open",
-                source: contact?.source || contact?.leadSource || "Direct",
+                lead: contactName,
+                contactName: contactName,
+                date: new Date(o.createdAt || o.dateCreated || Date.now()).toLocaleDateString(),
+                timeOnPhone: "—",
+                stage: o.pipelineStageName || this.mapStage(o.status),
+                pipelineStage: o.pipelineStageName || this.mapStage(o.status),
+                source: contact?.source || o.source || "Direct",
                 owner: o.assignedTo || "Unassigned",
-                value: o.monetaryValue || 0
+                value: o.monetaryValue || 0,
+                status: o.status
             };
         });
 
-        // Calculate conversion rates
-        const consultsScheduled = opportunities.filter((o: any) => 
-            (o.pipelineStageName || '').toLowerCase().includes('consult') ||
-            (o.status || '').toLowerCase().includes('scheduled')
-        ).length;
-        
-        const retainersSigned = opportunities.filter((o: any) => 
-            (o.status || '').toLowerCase().includes('won') ||
-            (o.pipelineStageName || '').toLowerCase().includes('closed') ||
-            (o.pipelineStageName || '').toLowerCase().includes('signed')
-        ).length;
+        // Calculate conversion rates based on status
+        const openOpps = opportunities.filter((o: any) => o.status === 'open').length;
+        const wonOpps = opportunities.filter((o: any) => o.status === 'won').length;
+        const lostOpps = opportunities.filter((o: any) => o.status === 'lost' || o.status === 'abandoned').length;
+        const totalClosed = wonOpps + lostOpps;
+
+        // Conversion rate = won / total
+        const conversionRate = opportunities.length > 0 ? (wonOpps / opportunities.length) * 100 : 0;
+        const closeRate = totalClosed > 0 ? (wonOpps / totalClosed) * 100 : 0;
+
+        console.log("GHL Metrics:", {
+            totalOpportunities: opportunities.length,
+            totalContacts: contacts.length,
+            weeklyOpportunities: recentOpportunities.length,
+            weeklyContacts: recentContacts.length,
+            openOpps,
+            wonOpps,
+            lostOpps,
+            conversionRate
+        });
 
         return {
             status: "success",
             data: {
                 leadsWeekly: recentContacts.length,
-                leadsYTD: contacts.length,
+                leadsYTD: ytdContacts.length,
                 opportunitiesWeekly: recentOpportunities.length,
                 opportunitiesYTD: ytdOpportunities.length,
-                consultsScheduled,
-                retainersSigned,
-                conversionRate: contacts.length > 0 ? (consultsScheduled / contacts.length) * 100 : 0,
-                closeRate: consultsScheduled > 0 ? (retainersSigned / consultsScheduled) * 100 : 0,
+                totalOpportunities: opportunities.length,
+                totalContacts: contacts.length,
+                consultsScheduled: openOpps,
+                retainersSigned: wonOpps,
+                conversionRate: Math.round(conversionRate * 10) / 10,
+                closeRate: Math.round(closeRate * 10) / 10,
                 leadSources: leadSourceMap,
                 opportunityFeed,
-                avgTimeOnPhone: "0m" // TODO: Implement call analytics
+                avgTimeOnPhone: "—"
             }
         };
+    }
+
+    private mapStage(status: string): string {
+        switch (status?.toLowerCase()) {
+            case 'open': return 'Open';
+            case 'won': return 'Won';
+            case 'lost': return 'Lost';
+            case 'abandoned': return 'Abandoned';
+            default: return status || 'Open';
+        }
     }
 }

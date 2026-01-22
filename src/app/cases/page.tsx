@@ -45,7 +45,7 @@ export default function CasesPage() {
     const isSoon = (dateStr?: string) => {
         if (!dateStr) return false;
         const date = new Date(dateStr);
-        const now = new Date("2025-12-23T04:52:04+05:00");
+        const now = new Date();
         const diffTime = date.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays >= 0 && diffDays < 7;
@@ -77,15 +77,11 @@ export default function CasesPage() {
                             title="Weekly Open Cases"
                             value={clioData.length}
                             icon={<Briefcase className="w-4 h-4" />}
-                            trend="up"
-                            trendValue="12%"
                         />
                         <MetricCard
                             title="Outstanding Balance"
                             value={`$${(totalOutstanding || 0).toLocaleString()}`}
                             icon={<CircleDollarSign className="w-4 h-4" />}
-                            trend="down"
-                            trendValue="5%"
                         />
                         <MetricCard
                             title="No Discovery Received"

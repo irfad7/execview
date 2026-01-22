@@ -2,6 +2,25 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.1.2] - 2025-01-22
+
+### Critical Fixes
+- **GHL API Version Header**: Fixed GoHighLevel API calls using wrong version header (`2021-07-28` → `2021-04-15`)
+  - Both `client.ts` and `enhanced-client.ts` were using incorrect version
+  - This was causing opportunities API to return 0 results despite 62 opportunities existing
+- **Metrics Page Conversion Rate**: Fixed display showing 1550% instead of 15.5% (was multiplying already-calculated percentage by 100)
+- **Cases Page Date**: Fixed hardcoded date `2025-12-23` replaced with `new Date()` for proper court date urgency calculation
+
+### Changed
+- **GHLMetric Type Consistency**: Updated all GHL data sources to return consistent shape with `lead`, `stage`, `totalOpportunities`, `totalContacts`, `closeRate` fields
+- **Mock Data**: Updated mock data to match GHLMetric interface for type safety
+
+### Technical
+- Updated API version headers in both GHL connectors
+- All opportunity feeds now include both `lead`/`stage` and `contactName`/`pipelineStage` for backward compatibility
+
+---
+
 ## [1.1.1] - 2025-01-22
 
 ### Critical Fixes

@@ -41,15 +41,32 @@ export interface ClioData {
 export interface GHLMetric {
     leadsWeekly: number;
     leadsYTD: number;
+    opportunitiesWeekly: number;
+    opportunitiesYTD: number;
+    totalOpportunities: number;
+    totalContacts: number;
     consultsScheduled: number;
     retainersSigned: number;
-    adSpend: number;
-    feesCollected: number;
-    consultationsWeekly: number;
+    adSpend?: number;
+    feesCollected?: number;
+    consultationsWeekly?: number;
     conversionRate: number;
-    roi: number;
+    closeRate: number;
+    roi?: number;
     leadSources: { [key: string]: number };
-    opportunityFeed: Array<{ id: string; contactName: string; date: string; timeOnPhone: string; pipelineStage: string; source: string; owner: string }>;
+    opportunityFeed: Array<{
+        id: string;
+        lead: string;
+        contactName: string;
+        date: string;
+        timeOnPhone: string;
+        stage: string;
+        pipelineStage: string;
+        source: string;
+        owner: string;
+        value?: number;
+        status?: string;
+    }>;
     avgTimeOnPhone: string;
 }
 

@@ -81,7 +81,7 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
             const response = await fetch(`${this.baseUrl}/locations/${this.locationId}`, {
                 headers: {
                     'Authorization': `Bearer ${this.accessToken}`,
-                    'Version': '2021-07-28',
+                    'Version': '2021-04-15',
                     'Content-Type': 'application/json'
                 }
             });
@@ -123,7 +123,7 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
-                        'Version': '2021-07-28',
+                        'Version': '2021-04-15',
                         'Content-Type': 'application/json'
                     }
                 }
@@ -167,7 +167,7 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
-                        'Version': '2021-07-28',
+                        'Version': '2021-04-15',
                         'Content-Type': 'application/json'
                     }
                 }
@@ -216,7 +216,7 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
-                        'Version': '2021-07-28',
+                        'Version': '2021-04-15',
                         'Content-Type': 'application/json'
                     }
                 }
@@ -566,18 +566,25 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                 take: 50
             });
 
-            const formattedFeed = opportunityFeed.map(opp => ({
-                id: opp.opportunityId,
-                contactName: opp.contact ? 
-                    `${opp.contact.firstName || ''} ${opp.contact.lastName || ''}`.trim() || "Unknown Lead" 
-                    : opp.name || "Unknown Lead",
-                date: opp.dateCreated.toISOString().split('T')[0],
-                timeOnPhone: "0m", // TODO: Implement call logs integration
-                pipelineStage: opp.pipelineStageName || opp.status || "Open",
-                source: opp.source || opp.contact?.source || "Direct",
-                owner: opp.assignedTo || "Unassigned",
-                value: opp.monetaryValue || 0
-            }));
+            const formattedFeed = opportunityFeed.map(opp => {
+                const contactName = opp.contact ?
+                    `${opp.contact.firstName || ''} ${opp.contact.lastName || ''}`.trim() || "Unknown Lead"
+                    : opp.name || "Unknown Lead";
+                const stageName = opp.pipelineStageName || opp.status || "Open";
+                return {
+                    id: opp.opportunityId,
+                    lead: contactName,
+                    contactName: contactName,
+                    date: opp.dateCreated.toISOString().split('T')[0],
+                    timeOnPhone: "0m", // TODO: Implement call logs integration
+                    stage: stageName,
+                    pipelineStage: stageName,
+                    source: opp.source || opp.contact?.source || "Direct",
+                    owner: opp.assignedTo || "Unassigned",
+                    value: opp.monetaryValue || 0,
+                    status: opp.status
+                };
+            });
 
             return {
                 status: "success",
@@ -586,10 +593,12 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                     leadsYTD: totalContacts,
                     opportunitiesWeekly: recentOpportunities,
                     opportunitiesYTD: ytdOpportunities,
+                    totalOpportunities: totalOpportunities,
+                    totalContacts: totalContacts,
                     consultsScheduled,
                     retainersSigned,
-                    conversionRate: totalContacts > 0 ? (consultsScheduled / totalContacts) * 100 : 0,
-                    closeRate: consultsScheduled > 0 ? (retainersSigned / consultsScheduled) * 100 : 0,
+                    conversionRate: totalContacts > 0 ? Math.round((consultsScheduled / totalContacts) * 1000) / 10 : 0,
+                    closeRate: consultsScheduled > 0 ? Math.round((retainersSigned / consultsScheduled) * 1000) / 10 : 0,
                     leadSources,
                     opportunityFeed: formattedFeed,
                     avgTimeOnPhone: "0m" // TODO: Implement call analytics
@@ -644,17 +653,22 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
         // Create opportunity feed
         const opportunityFeed = opportunities.slice(0, 50).map(o => {
             const contact = contacts.find(c => c.id === o.contactId);
+            const contactName = contact ?
+                `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || "Unknown Lead"
+                : o.name || "Unknown Lead";
+            const stageName = o.pipelineStageName || o.status || "Open";
             return {
                 id: o.id,
-                contactName: contact ? 
-                    `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || "Unknown Lead" 
-                    : o.name || "Unknown Lead",
+                lead: contactName,
+                contactName: contactName,
                 date: new Date(o.dateCreated).toISOString().split('T')[0],
                 timeOnPhone: "0m",
-                pipelineStage: o.pipelineStageName || o.status || "Open",
+                stage: stageName,
+                pipelineStage: stageName,
                 source: o.source || contact?.source || "Direct",
                 owner: o.assignedTo || "Unassigned",
-                value: o.monetaryValue || 0
+                value: o.monetaryValue || 0,
+                status: o.status
             };
         });
 
@@ -677,10 +691,12 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
                 leadsYTD: contacts.length,
                 opportunitiesWeekly: recentOpportunities.length,
                 opportunitiesYTD: ytdOpportunities.length,
+                totalOpportunities: opportunities.length,
+                totalContacts: contacts.length,
                 consultsScheduled,
                 retainersSigned,
-                conversionRate: contacts.length > 0 ? (consultsScheduled / contacts.length) * 100 : 0,
-                closeRate: consultsScheduled > 0 ? (retainersSigned / consultsScheduled) * 100 : 0,
+                conversionRate: contacts.length > 0 ? Math.round((consultsScheduled / contacts.length) * 1000) / 10 : 0,
+                closeRate: consultsScheduled > 0 ? Math.round((retainersSigned / consultsScheduled) * 1000) / 10 : 0,
                 leadSources: leadSourceMap,
                 opportunityFeed,
                 avgTimeOnPhone: "0m"

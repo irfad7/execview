@@ -79,8 +79,8 @@ export default function LeadsPage() {
                             subValue="For the current week"
                         />
                         <MetricCard
-                            title="Pipeline Velocity"
-                            value="4.8/d"
+                            title="Conversion Rate"
+                            value={`${data.ghl?.conversionRate || 0}%`}
                             icon={<Activity className="w-4 h-4 text-purple-500" />}
                         />
                     </div>
