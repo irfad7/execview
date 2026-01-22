@@ -19,7 +19,7 @@ import {
 import { PageTransition, AnimatedCard } from "@/lib/animations";
 
 export default function OverviewPage() {
-    const { data, loading } = useDashboard();
+    const { data, loading, error } = useDashboard();
     const { filter, isInRange } = useDateFilter();
 
     if (loading) {
@@ -42,6 +42,11 @@ export default function OverviewPage() {
                         <ArrowUpRight className="w-8 h-8 text-zinc-400" />
                     </div>
                     <h2 className="text-2xl font-bold text-white">No Data Available</h2>
+                    {error && (
+                        <div className="bg-error/10 border border-error/20 rounded-lg p-4 max-w-md">
+                            <p className="text-error text-sm font-medium">{error}</p>
+                        </div>
+                    )}
                     <p className="text-zinc-400 max-w-md">
                         Connect your integrations to start seeing real-time insights from your firm's data.
                     </p>

@@ -26,13 +26,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
                 // If no cache but user is authenticated, try a fresh sync
                 if (!result) {
+                    console.log("No cached data found, attempting fresh sync...");
                     const { refreshDashboardData } = await import("./dbActions");
-                    // We can try to refresh. If it fails (e.g. no tokens), it might still return default structure
                     try {
                         result = await refreshDashboardData();
+                        console.log("Fresh sync completed:", result ? "got data" : "no data");
                     } catch (syncError) {
                         console.error("Auto-sync failed:", syncError);
-                        // If sync fails, we still might want to show empty state rather than loading forever
+                        // Show error to user instead of silent failure
+                        setState({
+                            data: null,
+                            loading: false,
+                            error: `Sync failed: ${syncError instanceof Error ? syncError.message : 'Unknown error'}`,
+                        });
+                        return;
                     }
                 }
 
