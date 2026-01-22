@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 export type DateRange = "today" | "this_week" | "this_month" | "this_quarter" | "this_year" | "custom";
 
@@ -25,9 +25,14 @@ const FIRM_TIMEZONE = "America/New_York";
 
 function getEasternTimeNow(): Date {
     // Get current time in Eastern timezone
-    const now = new Date();
-    const easternTimeStr = now.toLocaleString("en-US", { timeZone: FIRM_TIMEZONE });
-    return new Date(easternTimeStr);
+    try {
+        const now = new Date();
+        const easternTimeStr = now.toLocaleString("en-US", { timeZone: FIRM_TIMEZONE });
+        return new Date(easternTimeStr);
+    } catch {
+        // Fallback to local time if timezone conversion fails
+        return new Date();
+    }
 }
 
 function getDateRangeValues(range: DateRange): { start: Date; end: Date; label: string } {
@@ -67,11 +72,29 @@ function getDateRangeValues(range: DateRange): { start: Date; end: Date; label: 
     }
 }
 
+// Get initial safe default (won't cause hydration issues)
+function getInitialFilter(): DateFilter {
+    // Use a fixed date for initial render to avoid hydration mismatch
+    // Will be updated immediately on client mount
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+    return { range: "this_week", startDate: startOfWeek, endDate: endOfToday, label: "This Week" };
+}
+
 export function DateFilterProvider({ children }: { children: React.ReactNode }) {
-    const [filter, setFilter] = useState<DateFilter>(() => {
+    const [filter, setFilter] = useState<DateFilter>(getInitialFilter);
+    const [mounted, setMounted] = useState(false);
+
+    // Update to Eastern time after mount to avoid hydration mismatch
+    useEffect(() => {
+        setMounted(true);
         const { start, end, label } = getDateRangeValues("this_week");
-        return { range: "this_week", startDate: start, endDate: end, label };
-    });
+        setFilter({ range: "this_week", startDate: start, endDate: end, label });
+    }, []);
 
     const setRange = useCallback((range: DateRange) => {
         const { start, end, label } = getDateRangeValues(range);
