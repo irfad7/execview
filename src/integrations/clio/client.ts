@@ -65,14 +65,30 @@ export class ClioConnector extends BaseConnector {
     }
 
     async fetchMatters(): Promise<ClioMatter[]> {
-        const params = new URLSearchParams({
-            status: 'open',
-            limit: '100',
-            fields: 'id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name},custom_field_values{id,field_name,value},created_at,updated_at'
-        });
+        // Try with full fields first
+        const fullFields = 'id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
+        // Minimal fields fallback (without billing info that requires special scope)
+        const minimalFields = 'id,display_number,description,status,practice_area{id,name},client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
 
-        const data = await this.makeRequest(`/matters.json?${params}`);
-        return data.data || [];
+        try {
+            const params = new URLSearchParams({
+                status: 'open',
+                limit: '100',
+                fields: fullFields
+            });
+            const data = await this.makeRequest(`/matters.json?${params}`);
+            return data.data || [];
+        } catch (error) {
+            // If full fields fail (e.g., no billing scope), try minimal fields
+            console.warn("Clio full fields request failed, trying minimal fields:", error);
+            const params = new URLSearchParams({
+                status: 'open',
+                limit: '100',
+                fields: minimalFields
+            });
+            const data = await this.makeRequest(`/matters.json?${params}`);
+            return data.data || [];
+        }
     }
 
     async fetchCalendarEntries(): Promise<ClioCalendarEntry[]> {
