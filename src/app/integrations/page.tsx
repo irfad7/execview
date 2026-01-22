@@ -1,5 +1,6 @@
-import { Zap, Database, BarChart3, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Zap, Database, BarChart3, ArrowRight, CheckCircle2, X } from "lucide-react";
 import { getApiConfigs } from "@/lib/dbActions";
+import { DisconnectButton } from "./DisconnectButton";
 
 const SERVICES_META = {
     clio: {
@@ -87,8 +88,11 @@ export default async function IntegrationsPage() {
                                     Connect <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" />
                                 </a>
                             ) : (
-                                <div className="flex items-center text-sm font-medium text-success">
-                                    Connected <CheckCircle2 className="w-4 h-4 ml-1" />
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center text-sm font-medium text-success">
+                                        Connected <CheckCircle2 className="w-4 h-4 ml-1" />
+                                    </div>
+                                    <DisconnectButton service={integration.id} />
                                 </div>
                             )}
 
