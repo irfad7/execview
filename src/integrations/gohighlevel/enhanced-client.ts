@@ -243,44 +243,52 @@ export class EnhancedGoHighLevelConnector extends BaseConnector {
     // Sync all GHL data to local database
     async syncAllData(userId: string): Promise<{ success: boolean; error?: string; stats?: any }> {
         try {
-            // Verify connection first
-            const connectionResult = await this.verifyConnection();
-            if (!connectionResult.success) {
-                throw new Error(connectionResult.error || "Connection verification failed");
+            // Try to verify connection, but don't fail if location API doesn't work
+            // (some GHL tokens don't have location scope but do have contacts/opportunities)
+            let locationName = "Unknown Location";
+            try {
+                const connectionResult = await this.verifyConnection();
+                if (connectionResult.success && connectionResult.location) {
+                    locationName = connectionResult.location.name;
+
+                    // Update or create location record
+                    await prisma.gHLLocation.upsert({
+                        where: {
+                            locationId_userId: {
+                                locationId: connectionResult.location.id,
+                                userId: userId
+                            }
+                        },
+                        update: {
+                            name: connectionResult.location.name,
+                            companyName: connectionResult.location.companyName,
+                            address: connectionResult.location.address,
+                            phone: connectionResult.location.phone,
+                            email: connectionResult.location.email,
+                            website: connectionResult.location.website,
+                            timezone: connectionResult.location.timezone,
+                            updatedAt: new Date()
+                        },
+                        create: {
+                            locationId: connectionResult.location.id,
+                            name: connectionResult.location.name,
+                            companyName: connectionResult.location.companyName,
+                            address: connectionResult.location.address,
+                            phone: connectionResult.location.phone,
+                            email: connectionResult.location.email,
+                            website: connectionResult.location.website,
+                            timezone: connectionResult.location.timezone,
+                            userId: userId
+                        }
+                    });
+                } else {
+                    console.warn("GHL location verification failed, continuing with data sync:", connectionResult.error);
+                }
+            } catch (locationError) {
+                console.warn("GHL location API error (continuing anyway):", locationError);
             }
 
-            const location = connectionResult.location!;
-            
-            // Update or create location record
-            await prisma.gHLLocation.upsert({
-                where: {
-                    locationId_userId: {
-                        locationId: location.id,
-                        userId: userId
-                    }
-                },
-                update: {
-                    name: location.name,
-                    companyName: location.companyName,
-                    address: location.address,
-                    phone: location.phone,
-                    email: location.email,
-                    website: location.website,
-                    timezone: location.timezone,
-                    updatedAt: new Date()
-                },
-                create: {
-                    locationId: location.id,
-                    name: location.name,
-                    companyName: location.companyName,
-                    address: location.address,
-                    phone: location.phone,
-                    email: location.email,
-                    website: location.website,
-                    timezone: location.timezone,
-                    userId: userId
-                }
-            });
+            const location = { id: this.locationId!, name: locationName };
 
             // Fetch and sync contacts
             const contacts = await this.fetchContacts(100);

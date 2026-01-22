@@ -155,24 +155,16 @@ export async function refreshDashboardData() {
         console.error("Clio sync failed:", e);
     }
 
-    // 2. Fetch GHL - Use enhanced service
+    // 2. Fetch GHL - Use direct API call (more reliable than database-based enhanced service)
     try {
-        const { GHLService } = await import("./ghl-service");
-        const ghlService = new GHLService(user.id);
-        
-        // Try to get enhanced metrics first
-        const enhancedResult = await ghlService.getMetrics();
-        if (enhancedResult.success) {
-            metrics.ghl = enhancedResult.data.data;
-            metrics.newCasesSignedWeekly = enhancedResult.data.data.retainersSigned || 0;
+        console.log("GHL: Fetching metrics directly from API...");
+        const ghlRes = await ghl.fetchMetrics();
+        if (ghlRes.status === "success") {
+            metrics.ghl = ghlRes.data;
+            metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
+            console.log("GHL: Successfully fetched", ghlRes.data.totalOpportunities, "opportunities,", ghlRes.data.totalContacts, "contacts");
         } else {
-            // Fall back to legacy method if enhanced fails
-            console.warn("Enhanced GHL metrics failed, falling back to legacy:", enhancedResult.error);
-            const ghlRes = await ghl.fetchMetrics();
-            if (ghlRes.status === "success") {
-                metrics.ghl = ghlRes.data;
-                metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
-            }
+            console.warn("GHL direct fetch returned non-success status");
         }
     } catch (e) {
         console.error("GHL sync failed:", e);
