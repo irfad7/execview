@@ -2,6 +2,34 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.0] - 2026-01-22
+
+### Added
+- **Global Date Filter**: Added date range filter across all dashboard pages
+  - Dropdown in header with predefined ranges: Today, This Week, This Month, This Quarter, Year to Date
+  - Custom date range picker for specific date ranges
+  - All pages (Dashboard, Leads, Cases) filter data based on selected range
+- **QuickBooks Debug Endpoint**: `/api/debug/test-qb` for testing QuickBooks OAuth connection
+
+### Fixed
+- **GHL Consultation Metrics**: Fixed `consultsScheduled` counting ALL open opportunities instead of just consultation-stage ones
+  - Now only counts opportunities with pipeline stages containing "consult", "scheduled", "booked", or "appointment"
+  - Added `consultationsWeekly` metric for weekly consultation tracking
+  - Added `openOpportunities` metric for total open opportunity count
+  - Added stage distribution logging for debugging
+
+### Changed
+- Dashboard, Leads, and Cases pages now use date-filtered data
+- Metric card titles now reflect the selected date range (e.g., "Cases (This Week)")
+- Footer changed from hardcoded date to "ExecView v1.0"
+
+### Technical
+- Added `DateFilterContext` for global date state management
+- Added `DateFilterDropdown` component with custom date picker
+- Added `isInRange` utility function for date filtering across components
+
+---
+
 ## [1.1.2] - 2025-01-22
 
 ### Critical Fixes
