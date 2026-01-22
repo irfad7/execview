@@ -30,6 +30,19 @@ interface ClioBill {
     matter?: { id: string };
 }
 
+// Hardcoded Clio custom field IDs for Shahnam's account
+// These are more reliable than string matching
+const CLIO_CUSTOM_FIELDS = {
+    PLEA_OFFER_RECEIVED: '16937551',      // checkbox - Track if plea offer received
+    DISCOVERY_RECEIVED: '16937566',        // checkbox - Track if discovery received
+    NEXT_COURT_DATE: '16937581',           // date - Upcoming court date
+    NEXT_COURT_HEARING: '16937596',        // text_line - Hearing description
+    CHARGE_TYPE: '16577596',               // picklist - Type of criminal charge
+    CUSTODY_STATUS: '16573291',            // picklist - Client custody status
+    CASE_NUMBER: '16592671',               // text_area - Court case number
+    PLEA_OFFER_DETAILS: '16937536',        // text_area - Plea offer details
+};
+
 export class ClioConnector extends BaseConnector {
     serviceName = "Clio";
     private baseUrl = "https://app.clio.com/api/v4";
@@ -111,23 +124,48 @@ export class ClioConnector extends BaseConnector {
         }
     }
 
-    private checkCustomField(customFields: any[], fieldName: string): boolean {
+    // Get custom field value by hardcoded ID (more reliable than string matching)
+    private getCustomFieldById(customFields: any[], fieldId: string): any {
+        if (!customFields || !Array.isArray(customFields)) return null;
+
+        const field = customFields.find(f =>
+            f.id?.toString() === fieldId || f.custom_field?.id?.toString() === fieldId
+        );
+
+        return field?.value ?? null;
+    }
+
+    // Check if a checkbox custom field is checked (true)
+    private isCheckboxFieldTrue(customFields: any[], fieldId: string): boolean {
+        const value = this.getCustomFieldById(customFields, fieldId);
+
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            const lowerValue = value.toLowerCase();
+            return lowerValue === 'yes' || lowerValue === 'true' || lowerValue === 'received' || lowerValue === '1';
+        }
+
+        return false;
+    }
+
+    // Legacy string matching fallback (in case IDs change or for other accounts)
+    private checkCustomFieldByName(customFields: any[], fieldName: string): boolean {
         if (!customFields || !Array.isArray(customFields)) return false;
-        
-        const field = customFields.find(f => 
+
+        const field = customFields.find(f =>
             f.field_name && f.field_name.toLowerCase().includes(fieldName.toLowerCase())
         );
-        
+
         if (!field) return false;
-        
-        // Check if value indicates "received" or "yes"
+
         const value = field.value;
         if (typeof value === 'boolean') return value;
         if (typeof value === 'string') {
             const lowerValue = value.toLowerCase();
             return lowerValue === 'yes' || lowerValue === 'true' || lowerValue === 'received';
         }
-        
+
         return false;
     }
 
@@ -150,14 +188,27 @@ export class ClioConnector extends BaseConnector {
             this.fetchClosedMattersThisWeek()
         ]);
 
-        // Map matters with intelligent field mapping
+        // Map matters with hardcoded field IDs (reliable) + fallback to string matching
         const mappedMatters = matters.map((m: ClioMatter) => {
-            const discoveryReceived = this.checkCustomField(m.custom_field_values || [], 'discovery');
-            const pleaOfferReceived = this.checkCustomField(m.custom_field_values || [], 'plea');
-            
-            // Find upcoming court date from calendar entries
-            const courtEntry = calendarEntries.find(entry => 
-                entry.matter?.id === m.id && 
+            const customFields = m.custom_field_values || [];
+
+            // Use hardcoded field IDs first, fallback to string matching
+            const discoveryReceived = this.isCheckboxFieldTrue(customFields, CLIO_CUSTOM_FIELDS.DISCOVERY_RECEIVED)
+                || this.checkCustomFieldByName(customFields, 'discovery');
+            const pleaOfferReceived = this.isCheckboxFieldTrue(customFields, CLIO_CUSTOM_FIELDS.PLEA_OFFER_RECEIVED)
+                || this.checkCustomFieldByName(customFields, 'plea');
+
+            // Get additional custom field data
+            const nextCourtDate = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.NEXT_COURT_DATE);
+            const nextCourtHearing = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.NEXT_COURT_HEARING);
+            const chargeTypeCustom = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.CHARGE_TYPE);
+            const custodyStatus = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.CUSTODY_STATUS);
+            const caseNumberCustom = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.CASE_NUMBER);
+            const pleaOfferDetails = this.getCustomFieldById(customFields, CLIO_CUSTOM_FIELDS.PLEA_OFFER_DETAILS);
+
+            // Find upcoming court date from calendar entries as fallback
+            const courtEntry = calendarEntries.find(entry =>
+                entry.matter?.id === m.id &&
                 entry.summary.toLowerCase().includes('court')
             );
 
@@ -165,14 +216,17 @@ export class ClioConnector extends BaseConnector {
                 id: m.id.toString(),
                 name: m.display_number ? `${m.display_number} - ${m.description}` : m.description,
                 clientName: m.client?.name || "Unknown Client",
-                caseNumber: m.display_number || m.id,
-                chargeType: this.mapPracticeAreaToChargeType(m.practice_area?.name),
+                caseNumber: caseNumberCustom || m.display_number || m.id,
+                chargeType: chargeTypeCustom || this.mapPracticeAreaToChargeType(m.practice_area?.name),
                 type: m.practice_area?.name || "Unassigned",
                 status: m.status,
                 openDate: m.created_at,
                 discoveryReceived,
                 pleaOfferReceived,
-                upcomingCourtDate: courtEntry?.start_at || null,
+                pleaOfferDetails,
+                custodyStatus,
+                upcomingCourtDate: nextCourtDate || courtEntry?.start_at || null,
+                nextCourtHearing,
                 outstandingBalance: m.outstanding_balance || 0
             };
         });

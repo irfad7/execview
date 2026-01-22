@@ -4,6 +4,7 @@ import prisma from "./prisma";
 import { AuthService } from "./auth";
 import { FirmMetrics } from "./types";
 import { cookies } from "next/headers";
+import { getValidAccessToken, getValidAccessTokenWithRealm, refreshAllExpiringTokens } from "./tokenRefresh";
 
 // Helper to get current authenticated user
 async function getUser() {
@@ -72,18 +73,31 @@ export async function refreshDashboardData() {
 
     console.log("Starting dashboard refresh for user:", user.email);
 
-    // Fetch User's API Configs
-    const configs = await prisma.apiConfig.findMany({
-        where: { userId: user.id, isActive: true }
-    });
+    // First, refresh any expiring tokens proactively
+    console.log("Checking and refreshing tokens if needed...");
+    const tokenRefreshResults = await refreshAllExpiringTokens(user.id);
+    console.log("Token refresh results:", JSON.stringify(tokenRefreshResults, null, 2));
 
-    const getToken = (service: string) => configs.find(c => c.service === service)?.accessToken;
-    const getRealmId = (service: string) => configs.find(c => c.service === service)?.realmId;
+    // Get valid tokens with automatic refresh
+    const clioToken = await getValidAccessToken('clio', user.id);
+    const qbToken = await getValidAccessTokenWithRealm('quickbooks', user.id);
+    const ghlToken = await getValidAccessTokenWithRealm('execview', user.id);
 
-    // Initialize connectors with tokens and additional params
-    const clio = new ClioConnector(getToken('clio'));
-    const qb = new QuickBooksConnector(getToken('quickbooks'));
-    const ghl = new GoHighLevelConnector(getToken('execview'), getRealmId('execview')); // realmId stores location_id for GHL
+    // Log token status for debugging
+    console.log("Token status - Clio:", clioToken.success ? "valid" : clioToken.error);
+    console.log("Token status - QB:", qbToken.success ? "valid" : qbToken.error);
+    console.log("Token status - GHL:", ghlToken.success ? "valid" : ghlToken.error);
+
+    // Initialize connectors with validated/refreshed tokens
+    const clio = new ClioConnector(clioToken.success ? clioToken.accessToken : null);
+    const qb = new QuickBooksConnector(
+        qbToken.success ? qbToken.accessToken : null,
+        qbToken.realmId
+    );
+    const ghl = new GoHighLevelConnector(
+        ghlToken.success ? ghlToken.accessToken : null,
+        ghlToken.realmId
+    );
 
     const metrics: any = {
         clio: [],

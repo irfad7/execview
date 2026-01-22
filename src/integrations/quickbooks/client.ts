@@ -2,7 +2,7 @@ import { BaseConnector } from "@/lib/api/base";
 
 export class QuickBooksConnector extends BaseConnector {
     serviceName = "quickbooks";
-    private baseUrl = "https://sandbox-quickbooks.api.intuit.com/v3/company";
+    private baseUrl = "https://quickbooks.api.intuit.com/v3/company";
     private realmId: string | null = null;
 
     constructor(accessToken?: string | null, realmId?: string | null) {

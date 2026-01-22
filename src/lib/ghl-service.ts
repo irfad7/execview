@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { EnhancedGoHighLevelConnector } from "@/integrations/gohighlevel/enhanced-client";
+import { getValidAccessTokenWithRealm } from "./tokenRefresh";
 
 const prisma = new PrismaClient();
 
@@ -82,36 +83,26 @@ export class GHLService {
         this.logger = new GHLServiceLogger(userId);
     }
 
-    // Get GHL connector instance with error handling
+    // Get GHL connector instance with error handling and automatic token refresh
     async getConnector(): Promise<{ connector?: EnhancedGoHighLevelConnector; error?: GHLServiceError }> {
         try {
-            const apiConfig = await prisma.apiConfig.findFirst({
-                where: {
+            // Use token refresh utility to get valid token
+            const tokenResult = await getValidAccessTokenWithRealm("execview", this.userId);
+
+            if (!tokenResult.success) {
+                const error: GHLServiceError = {
+                    code: tokenResult.error?.includes("not configured") ? "NO_INTEGRATION" : "MISSING_TOKEN",
+                    message: tokenResult.error || "Failed to get valid access token"
+                };
+                await this.logger.logWarning("GHL token issue", {
                     userId: this.userId,
-                    service: "execview", // GHL service alias
-                    isActive: true
-                }
-            });
-
-            if (!apiConfig) {
-                const error: GHLServiceError = {
-                    code: "NO_INTEGRATION",
-                    message: "No active GoHighLevel integration found"
-                };
-                await this.logger.logWarning("No GHL integration found", { userId: this.userId });
+                    error: tokenResult.error,
+                    refreshed: tokenResult.refreshed
+                });
                 return { error };
             }
 
-            if (!apiConfig.accessToken) {
-                const error: GHLServiceError = {
-                    code: "MISSING_TOKEN",
-                    message: "Access token not found"
-                };
-                await this.logger.logError("Missing access token", null, { userId: this.userId });
-                return { error };
-            }
-
-            if (!apiConfig.realmId) {
+            if (!tokenResult.realmId) {
                 const error: GHLServiceError = {
                     code: "MISSING_LOCATION",
                     message: "Location ID not found"
@@ -120,9 +111,14 @@ export class GHLService {
                 return { error };
             }
 
+            // Log if token was refreshed
+            if (tokenResult.refreshed) {
+                await this.logger.logInfo("GHL token refreshed successfully", { userId: this.userId });
+            }
+
             const connector = new EnhancedGoHighLevelConnector(
-                apiConfig.accessToken,
-                apiConfig.realmId
+                tokenResult.accessToken!,
+                tokenResult.realmId
             );
 
             return { connector };
