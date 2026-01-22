@@ -34,8 +34,12 @@ export async function GET(
     }
 
     const clientId = config.clientId;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Remove any trailing slash to ensure exact match with Intuit's redirect URI check
+    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
     const redirectUri = `${baseUrl}/api/auth/callback/${service}`;
+
+    // Log for debugging
+    console.log(`OAuth ${service}: Using redirect_uri = ${redirectUri}`);
 
     const url = new URL(config.authUrl);
     url.searchParams.append('client_id', clientId || '');

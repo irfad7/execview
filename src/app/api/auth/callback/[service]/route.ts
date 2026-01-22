@@ -28,9 +28,12 @@ export async function GET(
 ) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    const realmIdFromUrl = searchParams.get('realmId'); // QuickBooks sends realmId in callback URL
     const { service: serviceParam } = await params;
     const service = serviceParam.toLowerCase();
     const config = CONFIGS[service as keyof typeof CONFIGS];
+
+    console.log(`OAuth callback for ${service}: code=${code ? 'present' : 'missing'}, realmId=${realmIdFromUrl || 'not in URL'}`);
 
     // Get authenticated user
     const sessionToken = request.cookies.get('session')?.value;
@@ -54,8 +57,11 @@ export async function GET(
     try {
         const clientId = config.id;
         const clientSecret = config.secret;
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        // Remove any trailing slash to ensure exact match
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
         const redirectUri = `${baseUrl}/api/auth/callback/${service}`;
+
+        console.log(`OAuth ${service}: Using redirect_uri = ${redirectUri}`);
 
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
@@ -88,6 +94,11 @@ export async function GET(
 
         const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600);
 
+        // Get realmId - QuickBooks sends it in the callback URL, GHL sends locationId in token response
+        const realmId = realmIdFromUrl || data.realmId || data.locationId || data.location_id || null;
+
+        console.log(`OAuth ${service}: Storing tokens. realmId=${realmId}, expiresAt=${expiresAt}`);
+
         // Update DB via Prisma
         await prisma.apiConfig.upsert({
             where: {
@@ -99,7 +110,7 @@ export async function GET(
             update: {
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
-                realmId: data.realmId || data.locationId || data.location_id || null,
+                realmId: realmId,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()
@@ -109,7 +120,7 @@ export async function GET(
                 userId: user.id,
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
-                realmId: data.realmId || data.locationId || data.location_id || null,
+                realmId: realmId,
                 expiresAt: expiresAt,
                 isActive: true,
                 updatedAt: new Date()
