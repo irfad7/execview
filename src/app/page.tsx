@@ -58,6 +58,9 @@ export default function OverviewPage() {
         );
     }
 
+    // Show sync errors if any
+    const syncErrors = (data as any)?.syncErrors;
+
     // Calculate real metrics from data, filtered by date range
     const allCases = data.clio || [];
 
@@ -95,6 +98,18 @@ export default function OverviewPage() {
                 <Header title="Executive Overview" />
 
                 <main className="p-8 space-y-8">
+                    {/* Sync Errors Banner */}
+                    {syncErrors && Object.keys(syncErrors).length > 0 && (
+                        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
+                            <p className="text-warning font-bold text-sm mb-2">Some integrations had issues syncing:</p>
+                            <ul className="text-xs text-warning/80 space-y-1">
+                                {Object.entries(syncErrors).map(([service, error]) => (
+                                    <li key={service}>• {service}: {String(error)}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
                     {/* Welcome Section */}
                     <AnimatedCard delay={0.1}>
                         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 p-8">

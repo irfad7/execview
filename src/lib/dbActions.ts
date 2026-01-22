@@ -131,28 +131,40 @@ export async function refreshDashboardData() {
 
     // 1. Fetch Clio
     try {
-        const clioRes = await clio.fetchMetrics();
-        if (clioRes.status === "success") {
-            // Store core case data
-            metrics.clio = clioRes.data.matters || [];
-            metrics.activeCases = clioRes.data.activeCases || 0;
-            
-            // Store case management data for dashboard
-            metrics.clioData = {
-                caseManagement: clioRes.data.caseManagement || {},
-                upcomingCourtDates: clioRes.data.upcomingCourtDates || [],
-                bookkeeping: clioRes.data.bookkeeping || {}
-            };
-            
-            // Update dashboard metrics with Clio data
-            if (clioRes.data.bookkeeping) {
-                metrics.weeklyClosedCases = clioRes.data.bookkeeping.casesClosedThisWeek || 0;
-                metrics.paymentsCollectedWeekly = clioRes.data.bookkeeping.paymentsCollectedThisWeek || 0;
-                metrics.avgCaseValue = clioRes.data.bookkeeping.averageCaseValueYTD || 0;
+        if (!clioToken.success) {
+            console.error("Clio: Skipping fetch - no valid token:", clioToken.error);
+            metrics.syncErrors = metrics.syncErrors || {};
+            metrics.syncErrors.clio = clioToken.error;
+        } else {
+            console.log("Clio: Fetching metrics with valid token...");
+            const clioRes = await clio.fetchMetrics();
+            console.log("Clio: Response status:", clioRes.status, "- matters count:", clioRes.data?.matters?.length || 0);
+
+            if (clioRes.status === "success") {
+                // Store core case data
+                metrics.clio = clioRes.data.matters || [];
+                metrics.activeCases = clioRes.data.activeCases || 0;
+
+                // Store case management data for dashboard
+                metrics.clioData = {
+                    caseManagement: clioRes.data.caseManagement || {},
+                    upcomingCourtDates: clioRes.data.upcomingCourtDates || [],
+                    bookkeeping: clioRes.data.bookkeeping || {}
+                };
+
+                // Update dashboard metrics with Clio data
+                if (clioRes.data.bookkeeping) {
+                    metrics.weeklyClosedCases = clioRes.data.bookkeeping.casesClosedThisWeek || 0;
+                    metrics.paymentsCollectedWeekly = clioRes.data.bookkeeping.paymentsCollectedThisWeek || 0;
+                    metrics.avgCaseValue = clioRes.data.bookkeeping.averageCaseValueYTD || 0;
+                }
+                console.log("Clio: Successfully fetched", metrics.clio.length, "cases");
             }
         }
     } catch (e) {
         console.error("Clio sync failed:", e);
+        metrics.syncErrors = metrics.syncErrors || {};
+        metrics.syncErrors.clio = e instanceof Error ? e.message : String(e);
     }
 
     // 2. Fetch GHL - Use direct API call (more reliable than database-based enhanced service)
