@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDashboard } from "@/lib/context";
+import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/Card";
 import {
@@ -18,6 +20,7 @@ import { PageTransition, AnimatedCard } from "@/lib/animations";
 
 export default function OverviewPage() {
     const { data, loading } = useDashboard();
+    const { filter, isInRange } = useDateFilter();
 
     if (loading) {
         return (
@@ -50,14 +53,36 @@ export default function OverviewPage() {
         );
     }
 
-    // Calculate real metrics from data
-    const clioData = data.clio || [];
+    // Calculate real metrics from data, filtered by date range
+    const allCases = data.clio || [];
+
+    // Filter cases and opportunities by selected date range
+    const clioData = useMemo(() => {
+        return allCases.filter(c => {
+            if (!c.openDate) return true;
+            return isInRange(c.openDate);
+        });
+    }, [allCases, isInRange]);
+
+    const filteredOpportunities = useMemo(() => {
+        const allOpps = data.ghl?.opportunityFeed || [];
+        return allOpps.filter(opp => {
+            if (!opp.date) return true;
+            const parts = opp.date.split('/');
+            if (parts.length === 3) {
+                const oppDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                return isInRange(oppDate);
+            }
+            return true;
+        });
+    }, [data.ghl?.opportunityFeed, isInRange]);
+
     const urgentCases = clioData.filter(c => !c.discoveryReceived || !c.pleaOfferReceived);
     const casesWithCourtDates = clioData.filter(c => c.upcomingCourtDate);
-    const activeCases = data.activeCases || clioData.length || 0;
-    const weeklyLeads = data.ghl?.leadsWeekly || 0;
+    const activeCases = clioData.length || 0;
+    const periodLeads = filteredOpportunities.length;
     const ytdRevenue = data.qb?.revenueYTD || 0;
-    const weeklyOpportunities = data.ghl?.opportunitiesWeekly || 0;
+    const periodOpportunities = filteredOpportunities.filter(o => o.status === 'open').length;
 
     return (
         <PageTransition>
@@ -71,8 +96,8 @@ export default function OverviewPage() {
                             <div className="relative z-10">
                                 <h1 className="text-3xl font-extrabold text-white mb-2 font-display">Welcome back, Counselor.</h1>
                                 <p className="text-zinc-400 max-w-lg">
-                                    You have <span className="text-white font-bold">{activeCases} active cases</span> and{' '}
-                                    <span className="text-white font-bold">{weeklyLeads} leads</span> this week.
+                                    You have <span className="text-white font-bold">{activeCases} cases</span> and{' '}
+                                    <span className="text-white font-bold">{periodLeads} leads</span> for {filter.label.toLowerCase()}.
                                     {urgentCases.length > 0 && (
                                         <span className="text-warning"> {urgentCases.length} cases need attention.</span>
                                     )}
@@ -112,22 +137,22 @@ export default function OverviewPage() {
                         </AnimatedCard>
                         <AnimatedCard delay={0.3}>
                             <MetricCard
-                                title="Active Cases"
+                                title={`Cases (${filter.label})`}
                                 value={activeCases}
                                 icon={<Briefcase className="w-4 h-4 text-primary" />}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.4}>
                             <MetricCard
-                                title="Weekly Leads"
-                                value={weeklyLeads}
+                                title={`Leads (${filter.label})`}
+                                value={periodLeads}
                                 icon={<Users className="w-4 h-4" />}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.5}>
                             <MetricCard
-                                title="Weekly Opportunities"
-                                value={weeklyOpportunities}
+                                title={`Open Opportunities`}
+                                value={periodOpportunities}
                                 icon={<BarChart2 className="w-4 h-4" />}
                             />
                         </AnimatedCard>
@@ -182,7 +207,7 @@ export default function OverviewPage() {
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
                                     <div className="text-zinc-500 text-sm mb-4 font-medium">Retainers Signed</div>
                                     <div className="text-3xl font-bold text-white mb-2">{data.ghl?.retainersSigned || 0}</div>
-                                    <div className="text-xs text-zinc-500">This week</div>
+                                    <div className="text-xs text-zinc-500">{filter.label}</div>
                                 </div>
                             </AnimatedCard>
 
@@ -190,7 +215,7 @@ export default function OverviewPage() {
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
                                     <div className="text-zinc-500 text-sm mb-4 font-medium">Consultations</div>
                                     <div className="text-3xl font-bold text-white mb-2">{data.ghl?.consultsScheduled || 0}</div>
-                                    <div className="text-xs text-zinc-500">Scheduled this week</div>
+                                    <div className="text-xs text-zinc-500">{filter.label}</div>
                                 </div>
                             </AnimatedCard>
 

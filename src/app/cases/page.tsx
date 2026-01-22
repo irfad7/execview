@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDashboard } from "@/lib/context";
+import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/Card";
 import {
@@ -22,6 +24,7 @@ function cn(...inputs: ClassValue[]) {
 
 export default function CasesPage() {
     const { data, loading } = useDashboard();
+    const { filter, isInRange } = useDateFilter();
 
     if (loading || !data) {
         return (
@@ -34,7 +37,17 @@ export default function CasesPage() {
         );
     }
 
-    const clioData = data.clio || [];
+    const allCases = data.clio || [];
+
+    // Filter cases opened within the selected date range
+    const clioData = useMemo(() => {
+        return allCases.filter(c => {
+            if (!c.openDate) return true; // Include if no open date
+            return isInRange(c.openDate);
+        });
+    }, [allCases, isInRange]);
+
+    // Calculate metrics based on filtered data
     const casesWithNoDiscovery = clioData.filter(c => !c.discoveryReceived);
     const casesWithNoPlea = clioData.filter(c => !c.pleaOfferReceived);
     const totalOutstanding = clioData.reduce((acc, c) => acc + c.outstandingBalance, 0);
@@ -59,7 +72,9 @@ export default function CasesPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-white font-display tracking-tight">Case Portfolio</h2>
-                        <p className="text-zinc-400 text-sm font-medium">Tracking deadlines, discovery, and balances</p>
+                        <p className="text-zinc-400 text-sm font-medium">
+                            Showing {clioData.length} cases opened during {filter.label}
+                        </p>
                     </div>
                     <button
                         onClick={() => exportToPdf('cases-content', 'Case_Portfolio_Report')}
@@ -74,7 +89,7 @@ export default function CasesPage() {
                     {/* Metrics Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
-                            title="Weekly Open Cases"
+                            title={`Cases (${filter.label})`}
                             value={clioData.length}
                             icon={<Briefcase className="w-4 h-4" />}
                         />

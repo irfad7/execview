@@ -1,6 +1,7 @@
 "use client";
 
 import { useDashboard } from "@/lib/context";
+import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/Card";
 import {
@@ -16,6 +17,7 @@ import {
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { exportToPdf } from "@/lib/pdfUtils";
+import { useMemo } from "react";
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -23,6 +25,7 @@ function cn(...inputs: ClassValue[]) {
 
 export default function LeadsPage() {
     const { data, loading } = useDashboard();
+    const { filter, isInRange } = useDateFilter();
 
     if (loading || !data) {
         return (
@@ -35,10 +38,34 @@ export default function LeadsPage() {
         );
     }
 
-    // Use real opportunity feed or empty array. 
-    // If you want fallback dummy data for demo purposes if ghl is empty, you can add logic here.
-    // For now, let's use real data to fix "not getting it right"
-    const leads = data.ghl?.opportunityFeed || [];
+    // Filter opportunity feed by selected date range
+    const leads = useMemo(() => {
+        const allLeads = data.ghl?.opportunityFeed || [];
+        return allLeads.filter(lead => {
+            // Parse the date from the lead
+            if (!lead.date) return true; // Include if no date
+            // The date comes in "MM/DD/YYYY" format from the connector
+            const parts = lead.date.split('/');
+            if (parts.length === 3) {
+                const leadDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                return isInRange(leadDate);
+            }
+            return true;
+        });
+    }, [data.ghl?.opportunityFeed, isInRange]);
+
+    // Calculate filtered metrics based on selected date range
+    const filteredMetrics = useMemo(() => {
+        const totalLeads = leads.length;
+        const consultations = leads.filter(l =>
+            l.stage?.toLowerCase().includes('consult') ||
+            l.stage?.toLowerCase().includes('scheduled')
+        ).length;
+        return {
+            leadsInPeriod: totalLeads,
+            consultations
+        };
+    }, [leads]);
 
     return (
         <div className="flex-1 flex flex-col">
@@ -48,7 +75,9 @@ export default function LeadsPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-white font-display tracking-tight">Lead Performance</h2>
-                        <p className="text-zinc-400 text-sm font-medium">Monitoring intake efficiency and phone time</p>
+                        <p className="text-zinc-400 text-sm font-medium">
+                            Showing {leads.length} opportunities for {filter.label}
+                        </p>
                     </div>
                     <button
                         onClick={() => exportToPdf('leads-content', 'Leads_Pipeline_Report')}
@@ -62,8 +91,8 @@ export default function LeadsPage() {
                 <div id="leads-content" className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
-                            title="Leads This Week"
-                            value={data.ghl?.leadsWeekly || 0}
+                            title={`Leads (${filter.label})`}
+                            value={filteredMetrics.leadsInPeriod}
                             icon={<Users className="w-4 h-4 text-primary" />}
                         />
                         <MetricCard
@@ -74,9 +103,9 @@ export default function LeadsPage() {
                         />
                         <MetricCard
                             title="Consultations"
-                            value={data.ghl?.consultsScheduled || 0}
+                            value={filteredMetrics.consultations}
                             icon={<Calendar className="w-4 h-4 text-warning" />}
-                            subValue="For the current week"
+                            subValue={`In ${filter.label.toLowerCase()}`}
                         />
                         <MetricCard
                             title="Conversion Rate"

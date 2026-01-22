@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
+import { DateFilterDropdown } from "@/components/DateFilterDropdown";
 
 export function Header({ title }: { title: string }) {
     const [showNotifications, setShowNotifications] = useState(false);
@@ -63,6 +64,9 @@ export function Header({ title }: { title: string }) {
             <h2 className="text-xl font-semibold text-foreground tracking-tight">{title}</h2>
 
             <div className="flex items-center gap-6">
+                {/* Date Filter */}
+                <DateFilterDropdown />
+
                 {/* Search */}
                 <div className="relative group" ref={searchRef}>
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-primary transition-colors" />
