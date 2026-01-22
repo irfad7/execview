@@ -34,7 +34,7 @@ export default function RootLayout({
                                             System Operational
                                         </div>
                                         <div>
-                                            Last Automated Update: 2025-12-23 05:15 AM
+                                            ExecView v1.0
                                         </div>
                                     </footer>
                                 </div>

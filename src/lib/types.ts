@@ -46,10 +46,11 @@ export interface GHLMetric {
     totalOpportunities: number;
     totalContacts: number;
     consultsScheduled: number;
+    consultationsWeekly?: number;
+    openOpportunities?: number;
     retainersSigned: number;
     adSpend?: number;
     feesCollected?: number;
-    consultationsWeekly?: number;
     conversionRate: number;
     closeRate: number;
     roi?: number;

@@ -151,9 +151,36 @@ export class GoHighLevelConnector extends BaseConnector {
         const lostOpps = opportunities.filter((o: any) => o.status === 'lost' || o.status === 'abandoned').length;
         const totalClosed = wonOpps + lostOpps;
 
+        // Identify consultation-stage opportunities based on pipeline stage name
+        // Common consultation-related stages: "Consult Scheduled", "Consultation", "Consultation Booked", etc.
+        const isConsultationStage = (stageName?: string): boolean => {
+            if (!stageName) return false;
+            const lower = stageName.toLowerCase();
+            return lower.includes('consult') || lower.includes('scheduled') || lower.includes('booked') || lower.includes('appointment');
+        };
+
+        // Count opportunities in consultation stages
+        const consultationOpps = opportunities.filter((o: any) =>
+            o.status === 'open' && isConsultationStage(o.pipelineStageName)
+        );
+        const consultationsScheduled = consultationOpps.length;
+
+        // Count consultations scheduled this week
+        const consultationsWeekly = consultationOpps.filter((o: any) => {
+            const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();
+            return date > oneWeekAgo;
+        }).length;
+
         // Conversion rate = won / total
         const conversionRate = opportunities.length > 0 ? (wonOpps / opportunities.length) * 100 : 0;
         const closeRate = totalClosed > 0 ? (wonOpps / totalClosed) * 100 : 0;
+
+        // Log pipeline stages for debugging
+        const stageDistribution: { [key: string]: number } = {};
+        opportunities.forEach((o: any) => {
+            const stage = o.pipelineStageName || o.status || 'Unknown';
+            stageDistribution[stage] = (stageDistribution[stage] || 0) + 1;
+        });
 
         console.log("GHL Metrics:", {
             totalOpportunities: opportunities.length,
@@ -163,7 +190,10 @@ export class GoHighLevelConnector extends BaseConnector {
             openOpps,
             wonOpps,
             lostOpps,
-            conversionRate
+            consultationsScheduled,
+            consultationsWeekly,
+            conversionRate,
+            stageDistribution
         });
 
         return {
@@ -175,8 +205,10 @@ export class GoHighLevelConnector extends BaseConnector {
                 opportunitiesYTD: ytdOpportunities.length,
                 totalOpportunities: opportunities.length,
                 totalContacts: contacts.length,
-                consultsScheduled: openOpps,
+                consultsScheduled: consultationsScheduled,
+                consultationsWeekly: consultationsWeekly,
                 retainersSigned: wonOpps,
+                openOpportunities: openOpps,
                 conversionRate: Math.round(conversionRate * 10) / 10,
                 closeRate: Math.round(closeRate * 10) / 10,
                 leadSources: leadSourceMap,
