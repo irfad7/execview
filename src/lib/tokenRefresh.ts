@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from './prisma';
 
 // Token refresh configurations for each service
 const TOKEN_CONFIGS = {
