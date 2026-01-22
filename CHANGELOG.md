@@ -2,6 +2,17 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.1.1] - 2025-01-22
+
+### Critical Fixes
+- **GHL OAuth locationId**: Fixed OAuth callback to capture `locationId` (was looking for wrong case)
+- **Admin Sync Button**: Fixed "Sync All Sources" button - was fake (just waited 2 seconds, did nothing)
+
+### Root Cause
+Database investigation revealed GHL `realm_id` (locationId) was NULL, causing all GHL API calls to fail with "Missing location ID" error.
+
+---
+
 ## [1.1.0] - 2025-01-22
 
 ### Critical Fixes
