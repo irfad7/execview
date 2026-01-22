@@ -20,8 +20,18 @@ interface DateFilterContextType {
 
 const DateFilterContext = createContext<DateFilterContextType | undefined>(undefined);
 
-function getDateRangeValues(range: DateRange): { start: Date; end: Date; label: string } {
+// Firm is based in Greenbelt, MD - use Eastern Time for all date calculations
+const FIRM_TIMEZONE = "America/New_York";
+
+function getEasternTimeNow(): Date {
+    // Get current time in Eastern timezone
     const now = new Date();
+    const easternTimeStr = now.toLocaleString("en-US", { timeZone: FIRM_TIMEZONE });
+    return new Date(easternTimeStr);
+}
+
+function getDateRangeValues(range: DateRange): { start: Date; end: Date; label: string } {
+    const now = getEasternTimeNow();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfToday = new Date(today);
     endOfToday.setHours(23, 59, 59, 999);

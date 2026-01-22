@@ -92,9 +92,16 @@ export class GoHighLevelConnector extends BaseConnector {
             console.error("GHL Contacts fetch error:", error);
         }
 
-        // Calculate metrics
-        const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-        const startOfYear = new Date(new Date().getFullYear(), 0, 1).getTime();
+        // Calculate metrics using Eastern Time (firm is in Greenbelt, MD)
+        const getEasternTimeNow = (): Date => {
+            const now = new Date();
+            const easternTimeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+            return new Date(easternTimeStr);
+        };
+
+        const easternNow = getEasternTimeNow();
+        const oneWeekAgo = easternNow.getTime() - 7 * 24 * 60 * 60 * 1000;
+        const startOfYear = new Date(easternNow.getFullYear(), 0, 1).getTime();
 
         const recentOpportunities = opportunities.filter((o: any) => {
             const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Calendar, ChevronDown, Check } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Calendar, ChevronDown, Check, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDateFilter, DateRange } from "@/lib/dateFilterContext";
 
@@ -19,7 +19,27 @@ export function DateFilterDropdown() {
     const [showCustomPicker, setShowCustomPicker] = useState(false);
     const [customStart, setCustomStart] = useState("");
     const [customEnd, setCustomEnd] = useState("");
+    const [easternTime, setEasternTime] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Update Eastern time display every minute
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+            const timeStr = now.toLocaleString("en-US", {
+                timeZone: "America/New_York",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+                month: "short",
+                day: "numeric"
+            });
+            setEasternTime(timeStr);
+        };
+        updateTime();
+        const interval = setInterval(updateTime, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Close dropdown on click outside
     useEffect(() => {
@@ -80,6 +100,10 @@ export function DateFilterDropdown() {
                             <p className="text-[10px] font-bold text-sidebar-foreground uppercase tracking-widest">
                                 Date Range
                             </p>
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-sidebar-foreground/70">
+                                <Clock className="w-3 h-3" />
+                                <span>Eastern Time: {easternTime}</span>
+                            </div>
                         </div>
 
                         {!showCustomPicker ? (
