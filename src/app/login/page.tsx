@@ -1,15 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Briefcase, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const [password, setPassword] = useState("MLA@2026");
+    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [checkingSession, setCheckingSession] = useState(true);
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
     const router = useRouter();
+
+    // Check if already logged in
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const res = await fetch('/api/auth/session');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        router.replace('/');
+                        return;
+                    }
+                }
+            } catch (e) {
+                // Not logged in, stay on login page
+            }
+            setCheckingSession(false);
+        };
+        checkSession();
+    }, [router]);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,6 +42,7 @@ export default function LoginPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password }),
+                credentials: 'include'
             });
 
             const data = await response.json();
@@ -29,14 +51,25 @@ export default function LoginPage() {
                 throw new Error(data.error || 'Login failed');
             }
 
-            router.push('/');
-            router.refresh();
+            // Small delay to ensure cookie is set before redirect
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Use window.location for a full page reload to ensure cookies are read
+            window.location.href = '/';
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message });
-        } finally {
             setLoading(false);
         }
     };
+
+    // Show loading while checking session
+    if (checkingSession) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center bg-background">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 flex-col">
@@ -100,9 +133,8 @@ export default function LoginPage() {
 
                     <div className="mt-6 text-center">
                         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                            <p className="text-xs text-primary font-bold mb-2">My Legal Academy</p>
-                            <p className="text-xs text-zinc-400">Single Firm System</p>
-                            <p className="text-xs text-zinc-400">Default Password: MLA@2026</p>
+                            <p className="text-xs text-primary font-bold mb-1">Shahnam Law Group</p>
+                            <p className="text-xs text-zinc-400">Executive Dashboard</p>
                         </div>
                     </div>
                 </div>

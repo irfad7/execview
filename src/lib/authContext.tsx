@@ -67,14 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Protected route logic
+    // Protected route logic - only redirect if definitely not authenticated
     useEffect(() => {
         if (!loading) {
-            if (!session && pathname !== '/login') {
-                router.push('/login');
-            } else if (session && pathname === '/login') {
-                router.push('/');
+            // Only redirect to login if we've confirmed there's no session
+            // and we're not already on the login page or an API route
+            const isPublicPath = pathname === '/login' || pathname.startsWith('/api/');
+
+            if (!session && !isPublicPath) {
+                router.replace('/login');
             }
+            // Don't auto-redirect from login to home - let the login page handle its own flow
         }
     }, [session, loading, pathname, router]);
 
