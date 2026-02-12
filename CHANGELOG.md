@@ -2,6 +2,15 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.1] - 2026-02-13
+
+### Fixed
+- **QuickBooks OAuth Connection**: Updated to use Production app credentials
+  - Previous credentials were from a different/sandbox app
+  - Fixed redirect URI mismatch causing "undefined didn't connect" error
+
+---
+
 ## [1.2.0] - 2026-01-22
 
 ### Added
