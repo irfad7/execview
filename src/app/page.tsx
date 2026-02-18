@@ -109,7 +109,7 @@ export default function OverviewPage() {
                             <div className="relative z-10">
                                 <h1 className="text-3xl font-extrabold text-white mb-2 font-display">Welcome back, Counselor.</h1>
                                 <p className="text-zinc-400 max-w-lg">
-                                    You have <span className="text-white font-bold">{activeCases} cases</span> and{' '}
+                                    <span className="text-white font-bold">{activeCases} open cases</span> in the firm.{' '}
                                     <span className="text-white font-bold">{periodLeads} leads</span> for {filter.label.toLowerCase()}.
                                     {urgentCases.length > 0 && (
                                         <span className="text-warning"> {urgentCases.length} cases need attention.</span>
@@ -147,7 +147,7 @@ export default function OverviewPage() {
                         </AnimatedCard>
                         <AnimatedCard delay={0.3}>
                             <MetricCard
-                                title={`Cases (${filter.label})`}
+                                title="Open Cases"
                                 value={activeCases}
                                 icon={<Briefcase className="w-4 h-4 text-primary" />}
                             />
