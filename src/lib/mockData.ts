@@ -88,6 +88,7 @@ const MOCK_GHL_METRICS: GHLMetric = {
 
 const MOCK_QB_METRICS: QBMetric = {
     revenueYTD: 425000,
+    adSpendYTD: 15000,
     closedCasesWeekly: 3,
     avgCaseValue: 12500,
     paymentsCollectedWeekly: 18500,

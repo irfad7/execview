@@ -298,9 +298,10 @@ export class QuickBooksConnector extends BaseConnector {
     }
 
     private calculateMetrics(profitLossData: any, invoices: any[], payments: any[], deposits: any[], salesReceipts: any[]) {
-        // Calculate revenue from P&L report
+        // Calculate revenue and ad spend from P&L report
         // P&L report structure: { Rows: { Row: [...] } } - NOT wrapped in QueryResponse
         let revenueYTD = 0;
+        let adSpendYTD = 0;
 
         console.log("QB P&L Data structure:", JSON.stringify(profitLossData).substring(0, 500));
 
@@ -334,7 +335,44 @@ export class QuickBooksConnector extends BaseConnector {
                 }
                 return 0;
             };
+
+            // Parse P&L structure to find advertising/marketing expenses
+            const findAdSpend = (rows: any[]): number => {
+                let total = 0;
+                for (const row of rows) {
+                    // Check for expense rows containing advertising/marketing keywords
+                    if (row.ColData) {
+                        const label = row.ColData[0]?.value?.toLowerCase() || '';
+                        if (label.includes('advertising') || label.includes('marketing') ||
+                            label.includes('ad spend') || label.includes('promotion') ||
+                            label.includes('google ads') || label.includes('facebook ads') ||
+                            label.includes('social media') || label.includes('seo') ||
+                            label.includes('ppc') || label.includes('lead generation')) {
+                            const value = parseFloat(row.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
+                            console.log(`QB P&L found ad expense "${label}": ${value}`);
+                            total += value;
+                        }
+                    }
+                    // Check Summary rows (for category totals)
+                    if (row.Summary?.ColData) {
+                        const label = row.Summary.ColData[0]?.value?.toLowerCase() || '';
+                        if (label.includes('total advertising') || label.includes('total marketing')) {
+                            const value = parseFloat(row.Summary.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
+                            console.log(`QB P&L found ad total "${label}": ${value}`);
+                            // Use category total instead of individual items if found
+                            return value;
+                        }
+                    }
+                    // Check nested rows
+                    if (row.Rows?.Row) {
+                        total += findAdSpend(row.Rows.Row);
+                    }
+                }
+                return total;
+            };
+
             revenueYTD = findRevenue(profitLossData.Rows.Row);
+            adSpendYTD = findAdSpend(profitLossData.Rows.Row);
         }
 
         // If P&L parsing failed, calculate from deposits + payments + sales receipts
@@ -385,7 +423,7 @@ export class QuickBooksConnector extends BaseConnector {
             account: txn.DepositToAccountRef?.name || txn.AccountRef?.name
         }));
 
-        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Avg Case Value: $${avgCaseValue}, Total Transactions: ${transactions.length}`);
+        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Ad Spend YTD: $${adSpendYTD}, Avg Case Value: $${avgCaseValue}, Total Transactions: ${transactions.length}`);
 
         // Calculate legacy weekly metrics for backward compatibility
         const oneWeekAgo = new Date();
@@ -395,6 +433,7 @@ export class QuickBooksConnector extends BaseConnector {
 
         return {
             revenueYTD: Math.round(revenueYTD),
+            adSpendYTD: Math.round(adSpendYTD),
             avgCaseValue: Math.round(avgCaseValue),
             transactions,
             // Legacy properties for backward compatibility

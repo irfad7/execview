@@ -120,10 +120,12 @@ export async function refreshDashboardData() {
         },
         qb: {
             revenueYTD: 0,
+            adSpendYTD: 0,
             closedCasesWeekly: 0,
             avgCaseValue: 0,
             paymentsCollectedWeekly: 0,
-            recentCollections: []
+            recentCollections: [],
+            transactions: []
         },
         // Default fallbacks
         activeCases: 0,

@@ -263,13 +263,15 @@ describe('API Integration Connectors', () => {
       expect(result.status).toBe('success');
       expect(result.data).toEqual({
         revenueYTD: 0,
+        adSpendYTD: 0,
         revenueWeekly: 0,
         expensesYTD: 0,
         profitMargin: 0,
         closedCasesWeekly: 0,
         paymentsCollectedWeekly: 0,
         avgCaseValue: 0,
-        recentCollections: []
+        recentCollections: [],
+        transactions: []
       });
     });
 

@@ -82,6 +82,7 @@ export interface QBTransaction {
 
 export interface QBMetric {
     revenueYTD: number;
+    adSpendYTD: number;
     closedCasesWeekly: number;
     avgCaseValue: number;
     paymentsCollectedWeekly: number;
