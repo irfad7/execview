@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
         const profile = await getProfile();
 
-        if (!profile || (!profile.email && !toOverride)) {
+        if (!toOverride && (!profile || !profile.email)) {
             return NextResponse.json({ message: 'No profile/email found — cannot send report' }, { status: 400 });
         }
 
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
         const { weekRange, yearLabel } = getWeekRange();
 
         const emailData: WeeklyReportEmailData = {
-            firmName: profile.firmName || 'My Firm',
-            userName: profile.name || 'Team',
+            firmName: profile?.firmName || 'My Firm',
+            userName: profile?.name || 'Team',
             weekRange,
             yearLabel,
 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         };
 
         // ── Send via Resend ────────────────────────────────────────────────────
-        const sendTo = toOverride || profile.email!;
+        const sendTo = toOverride || profile?.email!;
         const result = await sendWeeklyFirmReport(sendTo, emailData);
 
         if (!result.success) {
