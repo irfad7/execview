@@ -94,6 +94,10 @@ const MOCK_QB_METRICS: QBMetric = {
     recentCollections: [
         { id: "P1", clientName: "Estate of John Doe", amount: 2500, date: "2025-12-22" },
         { id: "P2", clientName: "Mike Ross", amount: 4500, date: "2025-12-21" }
+    ],
+    transactions: [
+        { id: "P1", type: "payment", clientName: "Estate of John Doe", amount: 2500, date: "2025-12-22" },
+        { id: "P2", type: "payment", clientName: "Mike Ross", amount: 4500, date: "2025-12-21" }
     ]
 };
 

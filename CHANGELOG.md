@@ -2,6 +2,35 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.4] - 2026-02-18
+
+### Fixed
+- **Bookkeeping Page Cleanup**: Removed fake metrics and non-functional buttons
+  - Removed "Draft Invoices" card (was showing calculated fake data: `revenueYTD * 0.05`)
+  - Removed "Outstanding Balance" card with non-functional "Generate Statement" button
+  - Removed "View Drafts" button that had no action
+  - Removed "View All QuickBooks" link that went nowhere (`href="#"`)
+- **Unknown Client Display**: Improved payment table display for transactions without client names
+  - Now shows descriptive labels: "Bank Deposit", "Sales Receipt", or "Payment" instead of "Unknown Client"
+  - Shows account name as secondary info when available
+- **Metric Labels**: Changed metric card titles to include the date filter directly
+  - "Payments (Year to Date)" instead of generic title with subValue
+  - "Total Collected (Year to Date)" instead of "Total Payments Collected"
+  - "Avg Payment (Year to Date)" instead of "Avg Case Value"
+  - Removed confusing subValue labels that weren't updating properly
+
+### Removed
+- **Non-functional UI Elements**:
+  - "Download Report" button from Overview page (no action)
+  - External link button from "Cases Needing Attention" items (no action)
+  - Sidebar cards from Bookkeeping page (fake data, non-functional buttons)
+
+### Changed
+- Bookkeeping payments table now uses full width (removed sidebar layout)
+- Cleaned up unused imports and variables in bookkeeping and overview pages
+
+---
+
 ## [1.2.3] - 2026-02-18
 
 ### Fixed

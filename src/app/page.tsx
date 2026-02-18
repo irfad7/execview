@@ -10,7 +10,6 @@ import {
     ArrowUpRight,
     TrendingUp,
     Clock,
-    ExternalLink,
     Briefcase,
     Users,
     Calendar,
@@ -128,9 +127,6 @@ export default function OverviewPage() {
                                     >
                                         Refresh Data <ArrowUpRight className="w-4 h-4" />
                                     </button>
-                                    <button className="bg-white/5 hover:bg-white/10 text-white px-6 py-2.5 rounded-xl font-semibold transition-all border border-white/10">
-                                        Download Report
-                                    </button>
                                 </div>
                             </div>
 
@@ -200,9 +196,6 @@ export default function OverviewPage() {
                                                                 : "Missing Plea Offer"}
                                                     </div>
                                                 </div>
-                                                <button className="text-zinc-500 group-hover:text-white transition-colors">
-                                                    <ExternalLink className="w-4 h-4" />
-                                                </button>
                                             </div>
                                         ))
                                     ) : (

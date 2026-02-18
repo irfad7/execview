@@ -387,10 +387,26 @@ export class QuickBooksConnector extends BaseConnector {
 
         console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Avg Case Value: $${avgCaseValue}, Total Transactions: ${transactions.length}`);
 
+        // Calculate legacy weekly metrics for backward compatibility
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const weeklyTransactions = transactions.filter(t => new Date(t.date) >= oneWeekAgo);
+        const paymentsCollectedWeekly = weeklyTransactions.reduce((sum, t) => sum + t.amount, 0);
+
         return {
             revenueYTD: Math.round(revenueYTD),
             avgCaseValue: Math.round(avgCaseValue),
-            transactions
+            transactions,
+            // Legacy properties for backward compatibility
+            closedCasesWeekly: 0, // Not tracked in QB
+            paymentsCollectedWeekly: Math.round(paymentsCollectedWeekly),
+            recentCollections: transactions.slice(0, 10).map(t => ({
+                id: t.id,
+                clientName: t.clientName,
+                amount: t.amount,
+                date: t.date,
+                type: t.type
+            }))
         };
     }
 }

@@ -114,9 +114,8 @@ export async function GET() {
                 if (qbMetrics.status === 'success') {
                     addStep('QuickBooks API', 'success', {
                         revenueYTD: qbMetrics.data.revenueYTD,
-                        paymentsWeekly: qbMetrics.data.paymentsCollectedWeekly,
                         avgCaseValue: qbMetrics.data.avgCaseValue,
-                        recentCollectionsCount: qbMetrics.data.recentCollections?.length || 0
+                        transactionsCount: qbMetrics.data.transactions?.length || 0
                     });
                     results.summary.quickbooks = {
                         status: 'success',

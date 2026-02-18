@@ -238,10 +238,10 @@ export async function refreshDashboardData() {
             const qbRes = await qb.fetchMetrics();
             if (qbRes.status === "success") {
                 metrics.qb = qbRes.data;
-                console.log("QB: Successfully fetched - Revenue YTD:", qbRes.data.revenueYTD, ", Payments Weekly:", qbRes.data.paymentsCollectedWeekly);
+                console.log("QB: Successfully fetched - Revenue YTD:", qbRes.data.revenueYTD, ", Transactions:", qbRes.data.transactions?.length || 0);
 
                 // Log warning if no financial data found
-                if (qbRes.data.revenueYTD === 0 && qbRes.data.paymentsCollectedWeekly === 0) {
+                if (qbRes.data.revenueYTD === 0 && (!qbRes.data.transactions || qbRes.data.transactions.length === 0)) {
                     console.warn("QB: No financial data found - company may have no invoices/payments yet");
                     await addLog('quickbooks', 'warning', 'No financial data', 'Revenue and payments are $0');
                 }
