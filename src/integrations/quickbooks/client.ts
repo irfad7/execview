@@ -245,6 +245,58 @@ export class QuickBooksConnector extends BaseConnector {
         }
     }
 
+    // Extract client name from various QB transaction types
+    private extractClientName(txn: any): string {
+        // For Payments and Sales Receipts - CustomerRef is standard
+        if (txn.CustomerRef?.name) {
+            return txn.CustomerRef.name;
+        }
+
+        // For Deposits - client info is in Line items
+        if (txn.Line && Array.isArray(txn.Line)) {
+            for (const line of txn.Line) {
+                // Check DepositLineDetail.Entity (most common for deposits)
+                if (line.DepositLineDetail?.Entity?.name) {
+                    return line.DepositLineDetail.Entity.name;
+                }
+                // Check LinkedTxn for payment references
+                if (line.LinkedTxn && line.LinkedTxn.length > 0) {
+                    // LinkedTxn might reference a payment/invoice with customer info
+                    const linkedName = line.LinkedTxn[0]?.TxnId;
+                    if (linkedName) continue; // We'd need another API call to resolve this
+                }
+            }
+        }
+
+        // Check EntityRef (used in some transaction types)
+        if (txn.EntityRef?.name) {
+            return txn.EntityRef.name;
+        }
+
+        // Try PrivateNote or Memo as last resort (sometimes contains client info)
+        if (txn.PrivateNote) {
+            // Extract potential client name from memo (first line or before colon)
+            const firstLine = txn.PrivateNote.split('\n')[0].split(':')[0].trim();
+            if (firstLine && firstLine.length < 50) {
+                return firstLine;
+            }
+        }
+
+        if (txn.Memo) {
+            const firstLine = txn.Memo.split('\n')[0].split(':')[0].trim();
+            if (firstLine && firstLine.length < 50) {
+                return firstLine;
+            }
+        }
+
+        // Check DocNumber as it sometimes contains client reference
+        if (txn.DocNumber && txn.DocNumber.length < 30) {
+            return `Ref: ${txn.DocNumber}`;
+        }
+
+        return "Client Payment";
+    }
+
     private calculateMetrics(profitLossData: any, invoices: any[], payments: any[], deposits: any[], salesReceipts: any[]) {
         // Calculate revenue from P&L report
         // P&L report structure: { Rows: { Row: [...] } } - NOT wrapped in QueryResponse
@@ -308,29 +360,12 @@ export class QuickBooksConnector extends BaseConnector {
             console.log(`QB: Calculated revenue from transactions - Deposits: $${depositsTotal}, Sales Receipts: $${salesReceiptsTotal}, Payments: $${paymentsTotal}, Total: $${revenueYTD}`);
         }
 
-        // Calculate weekly metrics
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        // Combine all money-in transactions for weekly collections
+        // Combine all money-in transactions
         const allCollections = [
-            ...payments.map(p => ({ ...p, type: 'payment' })),
-            ...deposits.map(d => ({ ...d, type: 'deposit' })),
-            ...salesReceipts.map(sr => ({ ...sr, type: 'salesReceipt' }))
+            ...payments.map(p => ({ ...p, _type: 'payment' })),
+            ...deposits.map(d => ({ ...d, _type: 'deposit' })),
+            ...salesReceipts.map(sr => ({ ...sr, _type: 'salesReceipt' }))
         ];
-
-        const weeklyCollections = allCollections.filter((txn: any) =>
-            new Date(txn.TxnDate) > oneWeekAgo
-        );
-
-        const paymentsCollectedWeekly = weeklyCollections.reduce((sum: number, txn: any) =>
-            sum + parseFloat(txn.TotalAmt || 0), 0
-        );
-
-        // Weekly invoices for closed cases count
-        const weeklyInvoices = invoices.filter((invoice: any) =>
-            new Date(invoice.TxnDate) > oneWeekAgo
-        );
 
         // Calculate average case value from all transactions
         const allTransactions = [...invoices, ...salesReceipts, ...deposits];
@@ -339,36 +374,22 @@ export class QuickBooksConnector extends BaseConnector {
         );
         const avgCaseValue = allTransactions.length > 0 ? totalTransactionAmount / allTransactions.length : 0;
 
-        // Recent collections (last 10 from all transaction types)
-        const recentCollections = allCollections
-            .sort((a: any, b: any) => new Date(b.TxnDate).getTime() - new Date(a.TxnDate).getTime())
-            .slice(0, 10)
-            .map((txn: any) => ({
-                id: txn.Id,
-                clientName: txn.CustomerRef?.name || txn.EntityRef?.name || "Unknown Client",
-                amount: parseFloat(txn.TotalAmt || 0),
-                date: txn.TxnDate,
-                type: txn.type
-            }));
-
         // Create normalized transactions array for frontend date filtering
+        // All filtering will happen on the frontend based on the selected date range
         const transactions = allCollections.map((txn: any) => ({
             id: txn.Id,
-            type: txn.type as 'deposit' | 'payment' | 'salesReceipt' | 'invoice',
-            clientName: txn.CustomerRef?.name || txn.EntityRef?.name || "Unknown Client",
+            type: txn._type as 'deposit' | 'payment' | 'salesReceipt' | 'invoice',
+            clientName: this.extractClientName(txn),
             amount: parseFloat(txn.TotalAmt || 0),
             date: txn.TxnDate,
             account: txn.DepositToAccountRef?.name || txn.AccountRef?.name
         }));
 
-        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Weekly Collections: $${paymentsCollectedWeekly}, Total Transactions: ${transactions.length}`);
+        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Avg Case Value: $${avgCaseValue}, Total Transactions: ${transactions.length}`);
 
         return {
             revenueYTD: Math.round(revenueYTD),
-            closedCasesWeekly: weeklyInvoices.length + weeklyCollections.length,
             avgCaseValue: Math.round(avgCaseValue),
-            paymentsCollectedWeekly: Math.round(paymentsCollectedWeekly),
-            recentCollections,
             transactions
         };
     }

@@ -128,6 +128,66 @@ export async function GET() {
             results.apiTests.calendar = { error: e instanceof Error ? e.message : "Unknown error" };
         }
 
+        // Test 4: Fetch custom fields defined in this Clio account
+        try {
+            const customFieldsResponse = await fetch(
+                'https://app.clio.com/api/v4/custom_fields.json?fields=id,name,field_type,parent_type&limit=100',
+                { headers }
+            );
+            const status = customFieldsResponse.status;
+            if (customFieldsResponse.ok) {
+                const cfData = await customFieldsResponse.json();
+                const matterFields = (cfData.data || []).filter((f: any) => f.parent_type === 'Matter');
+                results.apiTests.customFields = {
+                    status,
+                    ok: true,
+                    totalCount: cfData.data?.length || 0,
+                    matterFieldsCount: matterFields.length,
+                    matterFields: matterFields.map((f: any) => ({
+                        id: f.id,
+                        name: f.name,
+                        type: f.field_type
+                    }))
+                };
+            } else {
+                results.apiTests.customFields = {
+                    status,
+                    ok: false,
+                    error: await customFieldsResponse.text()
+                };
+            }
+        } catch (e) {
+            results.apiTests.customFields = { error: e instanceof Error ? e.message : "Unknown error" };
+        }
+
+        // Test 5: Fetch one matter with custom_field_values to see actual data
+        try {
+            const matterResponse = await fetch(
+                'https://app.clio.com/api/v4/matters.json?status=open&limit=1&fields=id,display_number,description,custom_field_values{id,field_name,value}',
+                { headers }
+            );
+            const status = matterResponse.status;
+            if (matterResponse.ok) {
+                const mData = await matterResponse.json();
+                const matter = mData.data?.[0];
+                results.apiTests.sampleMatterCustomFields = {
+                    status,
+                    ok: true,
+                    matterId: matter?.id,
+                    matterName: matter?.description,
+                    customFieldValues: matter?.custom_field_values || []
+                };
+            } else {
+                results.apiTests.sampleMatterCustomFields = {
+                    status,
+                    ok: false,
+                    error: await matterResponse.text()
+                };
+            }
+        } catch (e) {
+            results.apiTests.sampleMatterCustomFields = { error: e instanceof Error ? e.message : "Unknown error" };
+        }
+
         return NextResponse.json(results);
 
     } catch (error) {

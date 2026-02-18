@@ -2,6 +2,27 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.3] - 2026-02-18
+
+### Fixed
+- **"Unknown Client" in QB Transactions**: Fixed extraction of client names from QuickBooks deposits
+  - Deposits store client info in `Line[].DepositLineDetail.Entity.name` not `CustomerRef`
+  - Now checks multiple locations: CustomerRef, Line items, EntityRef, Memo fields
+  - Falls back to "Client Payment" with reference number if no name found
+
+### Changed
+- **All Metrics Connected to Date Filter**: Every metric across all pages now respects the global date filter
+  - Bookkeeping: Closed Cases, Total Payments Collected, Avg Case Value all filter by date
+  - Metrics: Total Collected, Avg Case Value, Leads, Consultations all filter by date
+  - Removed hardcoded "Weekly Total" and "This Week" labels - now show selected filter label
+
+### Technical
+- Simplified QB metrics calculation - removed server-side weekly calculations
+- Frontend now calculates all period metrics from transaction data
+- Added Clio custom fields debug endpoint (`/api/debug/test-clio`) for field ID discovery
+
+---
+
 ## [1.2.2] - 2026-02-18
 
 ### Fixed

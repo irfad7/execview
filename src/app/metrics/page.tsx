@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useDashboard } from "@/lib/context";
+import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
 import { Card, MetricCard } from "@/components/Card";
 import {
@@ -20,6 +22,7 @@ const PROGRESS_GOAL = 500000;
 
 export default function MetricsPage() {
     const { data, loading } = useDashboard();
+    const { filter, isInRange } = useDateFilter();
 
     if (loading || !data) {
         return (
@@ -34,6 +37,51 @@ export default function MetricsPage() {
 
     const revenueYTD = data.qb?.revenueYTD || 0;
     const progressPercentage = (revenueYTD / PROGRESS_GOAL) * 100;
+
+    // Filter QB transactions by selected date range
+    const filteredTransactions = useMemo(() => {
+        const allTransactions = data?.qb?.transactions || [];
+        return allTransactions.filter(txn => {
+            if (!txn.date) return true;
+            return isInRange(txn.date);
+        });
+    }, [data?.qb?.transactions, isInRange]);
+
+    // Calculate filtered payment metrics
+    const filteredPaymentMetrics = useMemo(() => {
+        const totalCollected = filteredTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+        const avgValue = filteredTransactions.length > 0 ? totalCollected / filteredTransactions.length : 0;
+        return {
+            totalCollected: Math.round(totalCollected),
+            avgValue: Math.round(avgValue)
+        };
+    }, [filteredTransactions]);
+
+    // Filter leads by selected date range
+    const filteredLeads = useMemo(() => {
+        const allLeads = data?.ghl?.opportunityFeed || [];
+        return allLeads.filter(lead => {
+            if (!lead.date) return true;
+            const parts = lead.date.split('/');
+            if (parts.length === 3) {
+                const leadDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                return isInRange(leadDate);
+            }
+            return true;
+        });
+    }, [data?.ghl?.opportunityFeed, isInRange]);
+
+    // Calculate filtered lead metrics
+    const filteredLeadMetrics = useMemo(() => {
+        const consultations = filteredLeads.filter(l =>
+            l.stage?.toLowerCase().includes('consult') ||
+            l.stage?.toLowerCase().includes('scheduled')
+        ).length;
+        return {
+            leadsInPeriod: filteredLeads.length,
+            consultations
+        };
+    }, [filteredLeads]);
 
     return (
         <PageTransition>
@@ -84,12 +132,12 @@ export default function MetricsPage() {
 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="p-4 bg-sidebar-accent/50 rounded-xl border border-sidebar-border">
-                                                        <div className="text-sidebar-foreground text-xs mb-1 font-medium">Weekly Total Collected</div>
-                                                        <div className="text-foreground font-bold text-lg">${(data.qb?.paymentsCollectedWeekly || 0).toLocaleString()}</div>
+                                                        <div className="text-sidebar-foreground text-xs mb-1 font-medium">Total Collected ({filter.label})</div>
+                                                        <div className="text-foreground font-bold text-lg">${filteredPaymentMetrics.totalCollected.toLocaleString()}</div>
                                                     </div>
                                                     <div className="p-4 bg-sidebar-accent/50 rounded-xl border border-sidebar-border">
-                                                        <div className="text-sidebar-foreground text-xs mb-1 font-medium">Avg Case Value</div>
-                                                        <div className="text-foreground font-bold text-lg">${(data.qb?.avgCaseValue || 0).toLocaleString()}</div>
+                                                        <div className="text-sidebar-foreground text-xs mb-1 font-medium">Avg Case Value ({filter.label})</div>
+                                                        <div className="text-foreground font-bold text-lg">${filteredPaymentMetrics.avgValue.toLocaleString()}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -164,15 +212,15 @@ export default function MetricsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <AnimatedCard delay={0.4}>
                                     <MetricCard
-                                        title="Weekly Leads"
-                                        value={data.ghl?.leadsWeekly || 0}
+                                        title={`Leads (${filter.label})`}
+                                        value={filteredLeadMetrics.leadsInPeriod}
                                         icon={<Users className="w-4 h-4" />}
                                     />
                                 </AnimatedCard>
                                 <AnimatedCard delay={0.5}>
                                     <MetricCard
-                                        title="Consultations"
-                                        value={data.ghl?.consultationsWeekly || 0}
+                                        title={`Consultations (${filter.label})`}
+                                        value={filteredLeadMetrics.consultations}
                                         icon={<BarChart className="w-4 h-4 text-warning" />}
                                     />
                                 </AnimatedCard>

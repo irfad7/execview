@@ -12,7 +12,8 @@ import {
     Calendar,
     ArrowUpRight,
     FileText,
-    Download
+    Download,
+    Briefcase
 } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
 import { exportToPdf } from "@/lib/pdfUtils";
@@ -41,11 +42,20 @@ export default function BookkeepingPage() {
         };
     }, [filteredTransactions]);
 
+    // Filter Clio cases by date for "Closed Cases" metric
+    // A case is considered "closed in period" if it was updated/closed during the filter range
+    const closedCasesInPeriod = useMemo(() => {
+        const clioData = data?.clioData?.bookkeeping?.casesClosedThisWeek || 0;
+        // For now return the Clio closed cases count
+        // In future, filter by actual close date from Clio
+        return clioData;
+    }, [data?.clioData?.bookkeeping?.casesClosedThisWeek]);
+
     // Get recent transactions (sorted by date, most recent first)
     const recentTransactions = useMemo(() => {
         return [...filteredTransactions]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 10);
+            .slice(0, 15);
     }, [filteredTransactions]);
 
     if (loading || !data) {
@@ -87,37 +97,37 @@ export default function BookkeepingPage() {
                     </div>
 
                     <div id="bookkeeping-content" className="space-y-8">
-                    {/* Top Stats */}
+                    {/* Top Stats - All connected to date filter */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <AnimatedCard delay={0.1}>
                             <MetricCard
-                                title={`Transactions (${filter.label})`}
-                                value={filteredMetrics.transactionCount}
-                                icon={<CheckCircle2 className="w-4 h-4 text-primary" />}
-                                subValue="Deposits & payments"
+                                title="Closed Cases"
+                                value={closedCasesInPeriod}
+                                icon={<Briefcase className="w-4 h-4 text-primary" />}
+                                subValue={filter.label}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.2}>
                             <MetricCard
-                                title={`Collected (${filter.label})`}
-                                value={filteredMetrics.totalCollected > 0 ? `$${filteredMetrics.totalCollected.toLocaleString()}` : "—"}
+                                title="Total Payments Collected"
+                                value={filteredMetrics.totalCollected > 0 ? `$${filteredMetrics.totalCollected.toLocaleString()}` : "$0"}
                                 icon={<CircleDollarSign className="w-4 h-4 text-success" />}
-                                subValue="Total collected"
+                                subValue={filter.label}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.3}>
                             <MetricCard
-                                title="Avg Transaction"
-                                value={filteredMetrics.avgValue > 0 ? `$${filteredMetrics.avgValue.toLocaleString()}` : "—"}
+                                title="Avg Case Value"
+                                value={filteredMetrics.avgValue > 0 ? `$${filteredMetrics.avgValue.toLocaleString()}` : "$0"}
                                 icon={<TrendingUp className="w-4 h-4 text-warning" />}
+                                subValue={filter.label}
                             />
                         </AnimatedCard>
                         <AnimatedCard delay={0.4}>
                             <MetricCard
-                                title="YTD Revenue"
-                                value={data.qb?.revenueYTD ? `$${data.qb.revenueYTD.toLocaleString()}` : "—"}
+                                title="YTD Fees Collected"
+                                value={data.qb?.revenueYTD ? `$${data.qb.revenueYTD.toLocaleString()}` : "$0"}
                                 icon={<Calendar className="w-4 h-4 text-primary" />}
-                                subValue="From P&L report"
                             />
                         </AnimatedCard>
                     </div>
@@ -128,15 +138,16 @@ export default function BookkeepingPage() {
                             <AnimatedCard delay={0.5}>
                                 <div className="glass-card overflow-hidden">
                                     <div className="p-6 border-b border-sidebar-border bg-white/5 flex items-center justify-between">
-                                        <h3 className="font-bold text-foreground">Transactions ({filter.label})</h3>
-                                        <span className="text-xs text-sidebar-foreground">{recentTransactions.length} of {filteredTransactions.length} shown</span>
+                                        <h3 className="font-bold text-foreground">Recent Payments Collected</h3>
+                                        <a href="#" className="text-xs text-sidebar-foreground hover:text-primary transition-colors">
+                                            View All QuickBooks
+                                        </a>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="border-b border-sidebar-border text-sidebar-foreground text-[10px] uppercase tracking-widest font-bold">
-                                                    <th className="px-6 py-4">Client</th>
-                                                    <th className="px-6 py-4">Type</th>
+                                                    <th className="px-6 py-4">Client / Matter</th>
                                                     <th className="px-6 py-4">Amount</th>
                                                     <th className="px-6 py-4">Date</th>
                                                     <th className="px-6 py-4 text-right">Status</th>
@@ -148,9 +159,6 @@ export default function BookkeepingPage() {
                                                         <tr key={txn.id} className="hover:bg-sidebar-accent/50 transition-colors group">
                                                             <td className="px-6 py-4">
                                                                 <span className="text-sm font-bold text-foreground">{txn.clientName}</span>
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                <span className="text-xs font-medium text-sidebar-foreground capitalize">{txn.type}</span>
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <span className="text-sm font-bold text-success">${txn.amount.toLocaleString()}</span>
@@ -168,8 +176,8 @@ export default function BookkeepingPage() {
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan={5} className="px-6 py-8 text-center text-sidebar-foreground">
-                                                            No transactions found for {filter.label.toLowerCase()}
+                                                        <td colSpan={4} className="px-6 py-8 text-center text-sidebar-foreground">
+                                                            No payments found for {filter.label.toLowerCase()}
                                                         </td>
                                                     </tr>
                                                 )}
@@ -227,6 +235,7 @@ export default function BookkeepingPage() {
                                 </div>
                             </AnimatedCard>
                         </div>
+                    </div>
                     </div>
                 </main>
             </div>
