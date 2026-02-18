@@ -2,6 +2,31 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.5] - 2026-02-18
+
+### Major Cleanup - Production Ready
+This release focuses on making the app operational and removing all scaffolding/non-functional elements.
+
+### Removed
+- **Integrations Page**: Removed from sidebar navigation (functionality moved to Admin Panel)
+  - Page now redirects to /admin
+  - Removed DisconnectButton component
+- **Non-functional Buttons Across All Pages**:
+  - Metrics page: "Details" button
+  - Leads page: "Filter", "Add New Lead", "More" menu, "Load More Opportunities"
+  - Overview page: Fixed link to /admin instead of /integrations
+
+### Changed
+- Simplified navigation - only 6 main sections now
+- Cleaner Leads page table without action columns
+- All pages now have consistent, functional interfaces
+
+### Technical
+- Cleaned up unused imports across all pages
+- Removed dead code and unused components
+
+---
+
 ## [1.2.4] - 2026-02-18
 
 ### Fixed

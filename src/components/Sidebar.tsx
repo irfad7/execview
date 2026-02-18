@@ -11,8 +11,7 @@ import {
     LogOut,
     Sun,
     Moon,
-    Settings,
-    Database
+    Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/themeContext";
@@ -24,7 +23,6 @@ const menuItems = [
     { icon: BarChart2, label: "Firm Metrics", href: "/metrics" },
     { icon: BookOpen, label: "Bookkeeping", href: "/bookkeeping" },
     { icon: Users, label: "Leads Tracking", href: "/leads" },
-    { icon: Database, label: "Integrations", href: "/integrations" }, // Added
     { icon: Settings, label: "Admin Panel", href: "/admin" },
 ];
 

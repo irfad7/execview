@@ -4,15 +4,13 @@ import { useMemo } from "react";
 import { useDashboard } from "@/lib/context";
 import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
-import { Card, MetricCard } from "@/components/Card";
+import { MetricCard } from "@/components/Card";
 import {
     Users,
     Target,
     TrendingUp,
     BarChart,
-    ArrowUpRight,
     PieChart,
-    FileText as FileIcon,
     Download
 } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
@@ -179,7 +177,6 @@ export default function MetricsPage() {
                                             <PieChart className="w-4 h-4 text-primary" />
                                             Lead Source Distribution
                                         </h3>
-                                        <button className="text-xs font-bold text-sidebar-foreground hover:text-primary transition-colors">Details</button>
                                     </div>
 
                                     <div className="space-y-6">

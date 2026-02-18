@@ -49,7 +49,7 @@ export default function OverviewPage() {
                     <p className="text-zinc-400 max-w-md">
                         Connect your integrations to start seeing real-time insights from your firm's data.
                     </p>
-                    <a href="/integrations" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20">
+                    <a href="/admin" className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20">
                         Connect Integrations
                     </a>
                 </div>

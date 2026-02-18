@@ -8,9 +8,6 @@ import {
     Users,
     Phone,
     Calendar,
-    ArrowRight,
-    Filter,
-    MoreVertical,
     Activity,
     Download
 } from "lucide-react";
@@ -115,16 +112,8 @@ export default function LeadsPage() {
                     </div>
 
                     <div className="glass-card">
-                        <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-white">Daily Opportunity Feed</h3>
-                            <div className="flex gap-2">
-                                <button className="bg-sidebar-accent text-zinc-300 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 hover:text-white transition-colors">
-                                    <Filter className="w-3.5 h-3.5" /> Filter
-                                </button>
-                                <button className="bg-primary px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-lg shadow-primary/20">
-                                    Add New Lead
-                                </button>
-                            </div>
+                        <div className="p-6 border-b border-sidebar-border">
+                            <h3 className="text-lg font-semibold text-white">Opportunity Feed</h3>
                         </div>
 
                         <div className="p-0 overflow-x-auto">
@@ -137,7 +126,6 @@ export default function LeadsPage() {
                                         <th className="px-6 py-4 font-semibold">On Phone</th>
                                         <th className="px-6 py-4 font-semibold">Pipeline Stage</th>
                                         <th className="px-6 py-4 font-semibold">Source</th>
-                                        <th className="px-6 py-4 text-right"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border text-sm">
@@ -168,21 +156,10 @@ export default function LeadsPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-zinc-500 font-medium">{lead.source}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="text-zinc-600 hover:text-white transition-colors">
-                                                    <MoreVertical className="w-4 h-4" />
-                                                </button>
-                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
-
-                        <div className="p-4 border-t border-sidebar-border bg-sidebar-accent/10 flex items-center justify-center">
-                            <button className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1.5">
-                                Load More Opportunities <ArrowRight className="w-3 h-3" />
-                            </button>
                         </div>
                     </div>
                 </div>
