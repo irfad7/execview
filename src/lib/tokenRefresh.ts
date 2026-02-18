@@ -22,8 +22,10 @@ const TOKEN_CONFIGS = {
     }
 };
 
-// Buffer time before expiration to trigger refresh (5 minutes)
-const REFRESH_BUFFER_SECONDS = 300;
+// Buffer time before expiration to trigger refresh
+// QuickBooks tokens only last 1 hour (3600 seconds), so we need to be aggressive
+// Refresh 10 minutes before expiration to avoid race conditions
+const REFRESH_BUFFER_SECONDS = 600;
 
 export interface TokenRefreshResult {
     success: boolean;

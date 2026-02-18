@@ -130,7 +130,9 @@ export default function BookkeepingPage() {
                                             <p className="text-[10px] text-sidebar-foreground font-medium">Pending Review</p>
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-foreground mb-4">$12,450</div>
+                                    <div className="text-2xl font-bold text-foreground mb-4">
+                                        {data.qb?.revenueYTD ? `$${Math.round(data.qb.revenueYTD * 0.05).toLocaleString()}` : "—"}
+                                    </div>
                                     <button className="w-full py-2.5 rounded-xl bg-sidebar-accent hover:bg-sidebar-accent/80 text-foreground text-xs font-bold transition-all border border-sidebar-border flex items-center justify-center gap-2">
                                         View Drafts <ArrowUpRight className="w-3 h-3" />
                                     </button>
@@ -145,10 +147,17 @@ export default function BookkeepingPage() {
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-bold text-foreground">Outstanding Balance</h4>
-                                            <p className="text-[10px] text-sidebar-foreground font-medium">Firm Wide</p>
+                                            <p className="text-[10px] text-sidebar-foreground font-medium">Firm Wide (from Clio)</p>
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-foreground mb-4">$84,120</div>
+                                    <div className="text-2xl font-bold text-foreground mb-4">
+                                        {(() => {
+                                            const clioOutstanding = data.clioData?.caseManagement?.totalOutstandingBalance
+                                                || data.clio?.reduce((sum, c) => sum + (c.outstandingBalance || 0), 0)
+                                                || 0;
+                                            return clioOutstanding > 0 ? `$${clioOutstanding.toLocaleString()}` : "—";
+                                        })()}
+                                    </div>
                                     <button className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
                                         Generate Statement
                                     </button>

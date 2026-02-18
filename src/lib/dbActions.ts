@@ -79,14 +79,17 @@ export async function refreshDashboardData() {
     console.log("Token refresh results:", JSON.stringify(tokenRefreshResults, null, 2));
 
     // Get valid tokens with automatic refresh
+    // IMPORTANT: QuickBooks tokens only last 1 hour, so always get fresh tokens
     const clioToken = await getValidAccessToken('clio', user.id);
     const qbToken = await getValidAccessTokenWithRealm('quickbooks', user.id);
     const ghlToken = await getValidAccessTokenWithRealm('execview', user.id);
 
-    // Log token status for debugging
-    console.log("Token status - Clio:", clioToken.success ? "valid" : clioToken.error);
-    console.log("Token status - QB:", qbToken.success ? "valid" : qbToken.error);
-    console.log("Token status - GHL:", ghlToken.success ? "valid" : ghlToken.error);
+    // Log detailed token status for debugging
+    console.log("=== TOKEN STATUS ===");
+    console.log("Clio:", clioToken.success ? `Valid (refreshed: ${clioToken.refreshed})` : `FAILED: ${clioToken.error}`);
+    console.log("QuickBooks:", qbToken.success ? `Valid (refreshed: ${qbToken.refreshed}, realmId: ${qbToken.realmId})` : `FAILED: ${qbToken.error}`);
+    console.log("GoHighLevel:", ghlToken.success ? `Valid (refreshed: ${ghlToken.refreshed}, locationId: ${ghlToken.realmId})` : `FAILED: ${ghlToken.error}`);
+
 
     // Initialize connectors with validated/refreshed tokens
     const clio = new ClioConnector(clioToken.success ? clioToken.accessToken : null);
@@ -132,9 +135,11 @@ export async function refreshDashboardData() {
     // 1. Fetch Clio
     try {
         if (!clioToken.success) {
+            const errorMsg = `Token error: ${clioToken.error}`;
             console.error("Clio: Skipping fetch - no valid token:", clioToken.error);
             metrics.syncErrors = metrics.syncErrors || {};
-            metrics.syncErrors.clio = clioToken.error;
+            metrics.syncErrors.clio = errorMsg;
+            await addLog('clio', 'error', 'Token validation failed', clioToken.error);
         } else {
             console.log("Clio: Fetching metrics with valid token...");
             const clioRes = await clio.fetchMetrics();
@@ -159,37 +164,99 @@ export async function refreshDashboardData() {
                     metrics.avgCaseValue = clioRes.data.bookkeeping.averageCaseValueYTD || 0;
                 }
                 console.log("Clio: Successfully fetched", metrics.clio.length, "cases");
+
+                // Log warning if no cases found
+                if (metrics.clio.length === 0) {
+                    console.warn("Clio: No open cases found - this may be expected if all cases are closed");
+                    await addLog('clio', 'warning', 'No open cases found', 'API returned 0 open matters');
+                }
+            } else {
+                console.error("Clio: API returned non-success status");
+                metrics.syncErrors = metrics.syncErrors || {};
+                metrics.syncErrors.clio = "API returned non-success status";
             }
         }
     } catch (e) {
-        console.error("Clio sync failed:", e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error("Clio sync failed:", errorMsg);
         metrics.syncErrors = metrics.syncErrors || {};
-        metrics.syncErrors.clio = e instanceof Error ? e.message : String(e);
+        metrics.syncErrors.clio = errorMsg;
+        await addLog('clio', 'error', 'Sync failed', errorMsg);
     }
 
     // 2. Fetch GHL - Use direct API call (more reliable than database-based enhanced service)
     try {
-        console.log("GHL: Fetching metrics directly from API...");
-        const ghlRes = await ghl.fetchMetrics();
-        if (ghlRes.status === "success") {
-            metrics.ghl = ghlRes.data;
-            metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
-            console.log("GHL: Successfully fetched", ghlRes.data.totalOpportunities, "opportunities,", ghlRes.data.totalContacts, "contacts");
+        if (!ghlToken.success) {
+            const errorMsg = `Token error: ${ghlToken.error}`;
+            console.error("GHL: Skipping fetch - no valid token:", ghlToken.error);
+            metrics.syncErrors = metrics.syncErrors || {};
+            metrics.syncErrors.ghl = errorMsg;
+            await addLog('gohighlevel', 'error', 'Token validation failed', ghlToken.error);
+        } else if (!ghlToken.realmId) {
+            const errorMsg = "Missing locationId - please reconnect GoHighLevel";
+            console.error("GHL: Missing locationId");
+            metrics.syncErrors = metrics.syncErrors || {};
+            metrics.syncErrors.ghl = errorMsg;
+            await addLog('gohighlevel', 'error', 'Missing locationId', errorMsg);
         } else {
-            console.warn("GHL direct fetch returned non-success status");
+            console.log("GHL: Fetching metrics directly from API...");
+            const ghlRes = await ghl.fetchMetrics();
+            if (ghlRes.status === "success") {
+                metrics.ghl = ghlRes.data;
+                metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
+                console.log("GHL: Successfully fetched", ghlRes.data.totalOpportunities, "opportunities,", ghlRes.data.totalContacts, "contacts");
+            } else {
+                console.warn("GHL direct fetch returned non-success status");
+                metrics.syncErrors = metrics.syncErrors || {};
+                metrics.syncErrors.ghl = "API returned non-success status";
+            }
         }
     } catch (e) {
-        console.error("GHL sync failed:", e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error("GHL sync failed:", errorMsg);
+        metrics.syncErrors = metrics.syncErrors || {};
+        metrics.syncErrors.ghl = errorMsg;
+        await addLog('gohighlevel', 'error', 'Sync failed', errorMsg);
     }
 
     // 3. Fetch QuickBooks
     try {
-        const qbRes = await qb.fetchMetrics();
-        if (qbRes.status === "success") {
-            metrics.qb = qbRes.data;
+        if (!qbToken.success) {
+            const errorMsg = `Token error: ${qbToken.error}`;
+            console.error("QB: Skipping fetch - no valid token:", qbToken.error);
+            metrics.syncErrors = metrics.syncErrors || {};
+            metrics.syncErrors.quickbooks = errorMsg;
+            await addLog('quickbooks', 'error', 'Token validation failed', qbToken.error);
+        } else if (!qbToken.realmId) {
+            const errorMsg = "Missing realmId (company ID) - please reconnect QuickBooks";
+            console.error("QB: Missing realmId");
+            metrics.syncErrors = metrics.syncErrors || {};
+            metrics.syncErrors.quickbooks = errorMsg;
+            await addLog('quickbooks', 'error', 'Missing realmId', errorMsg);
+        } else {
+            console.log("QB: Fetching metrics with valid token...");
+            const qbRes = await qb.fetchMetrics();
+            if (qbRes.status === "success") {
+                metrics.qb = qbRes.data;
+                console.log("QB: Successfully fetched - Revenue YTD:", qbRes.data.revenueYTD, ", Payments Weekly:", qbRes.data.paymentsCollectedWeekly);
+
+                // Log warning if no financial data found
+                if (qbRes.data.revenueYTD === 0 && qbRes.data.paymentsCollectedWeekly === 0) {
+                    console.warn("QB: No financial data found - company may have no invoices/payments yet");
+                    await addLog('quickbooks', 'warning', 'No financial data', 'Revenue and payments are $0');
+                }
+            } else {
+                console.warn("QB: API returned non-success status");
+                metrics.syncErrors = metrics.syncErrors || {};
+                metrics.syncErrors.quickbooks = "API returned non-success status";
+            }
         }
     } catch (e) {
-        console.error("QB sync failed:", e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error("QB sync failed:", errorMsg);
+        metrics.syncErrors = metrics.syncErrors || {};
+        metrics.syncErrors.quickbooks = errorMsg;
+        await addLog('quickbooks', 'error', 'Sync failed', errorMsg);
     }
 
     // Update Cache

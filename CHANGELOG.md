@@ -2,6 +2,35 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.2] - 2026-02-18
+
+### Fixed
+- **Hardcoded Values Removed**: Bookkeeping page now shows real data instead of hardcoded placeholders
+  - "Draft Invoices" now calculates from actual QB revenue data
+  - "Outstanding Balance" now pulls from Clio case management data
+- **Sync Error Visibility**: Errors from Clio, QuickBooks, and GHL are now properly logged and visible
+  - Each integration now logs detailed errors to the system logs
+  - Token validation errors are surfaced with specific messages
+  - Missing realmId/locationId errors now show reconnection instructions
+- **QuickBooks Token Refresh**: Increased refresh buffer from 5 to 10 minutes
+  - QB tokens only last 1 hour, previous 5-minute buffer was cutting it too close
+- **Debug Endpoint Bug**: Fixed token expiration check in `/api/debug/test-clio`
+  - Was comparing Unix seconds to JS milliseconds (wrong by 1000x)
+
+### Added
+- **Comprehensive Sync Test**: New `/api/debug/sync-test` endpoint
+  - Tests each integration step-by-step with detailed results
+  - Shows exact errors for each service
+  - Includes sample data from successful API calls
+  - Use this to diagnose why integrations aren't returning data
+
+### Technical
+- Added detailed console logging for token refresh status
+- Added warning logs when APIs return empty data (0 cases, $0 revenue)
+- All sync errors now stored in `syncErrors` object and logged to database
+
+---
+
 ## [1.2.1] - 2026-02-13
 
 ### Fixed

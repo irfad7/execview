@@ -43,7 +43,8 @@ export async function GET() {
                 hasToken: !!clioConfig.accessToken,
                 hasRefreshToken: !!clioConfig.refreshToken,
                 expiresAt: clioConfig.expiresAt,
-                isExpired: clioConfig.expiresAt ? new Date(clioConfig.expiresAt) < new Date() : 'no expiry set',
+                expiresAtHuman: clioConfig.expiresAt ? new Date(clioConfig.expiresAt * 1000).toISOString() : 'no expiry set',
+                isExpired: clioConfig.expiresAt ? (clioConfig.expiresAt * 1000) < Date.now() : 'no expiry set',
                 tokenPreview: clioConfig.accessToken.substring(0, 30) + '...'
             },
             apiTests: {}
