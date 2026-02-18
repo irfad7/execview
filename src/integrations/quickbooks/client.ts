@@ -84,9 +84,21 @@ export class QuickBooksConnector extends BaseConnector {
         }
     }
 
+    private getDateRange() {
+        // Fetch last 2 years of data for proper date filtering
+        const now = new Date();
+        const twoYearsAgo = new Date(now);
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+        return {
+            startDate: twoYearsAgo.toISOString().split('T')[0],
+            endDate: now.toISOString().split('T')[0],
+            ytdStartDate: `${now.getFullYear()}-01-01`
+        };
+    }
+
     private async fetchProfitAndLoss() {
         try {
-            // Get current year dates
+            // Get current year dates for P&L (YTD is standard for this report)
             const currentYear = new Date().getFullYear();
             const startDate = `${currentYear}-01-01`;
             const endDate = new Date().toISOString().split('T')[0];
@@ -117,9 +129,10 @@ export class QuickBooksConnector extends BaseConnector {
 
     private async fetchInvoices() {
         try {
-            // Get invoices from this year
+            // Get invoices from last 2 years for date filtering
+            const { startDate } = this.getDateRange();
             const response = await fetch(
-                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Invoice WHERE TxnDate >= '${new Date().getFullYear()}-01-01' MAXRESULTS 1000`,
+                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Invoice WHERE TxnDate >= '${startDate}' MAXRESULTS 1000`,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
@@ -144,9 +157,10 @@ export class QuickBooksConnector extends BaseConnector {
 
     private async fetchPayments() {
         try {
-            // Get payments from this year
+            // Get payments from last 2 years for date filtering
+            const { startDate } = this.getDateRange();
             const response = await fetch(
-                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Payment WHERE TxnDate >= '${new Date().getFullYear()}-01-01' MAXRESULTS 1000`,
+                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Payment WHERE TxnDate >= '${startDate}' MAXRESULTS 1000`,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
@@ -173,9 +187,10 @@ export class QuickBooksConnector extends BaseConnector {
 
     private async fetchDeposits() {
         try {
-            // Get deposits from this year (law firms often use deposits for retainers/payments)
+            // Get deposits from last 2 years for date filtering
+            const { startDate } = this.getDateRange();
             const response = await fetch(
-                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Deposit WHERE TxnDate >= '${new Date().getFullYear()}-01-01' MAXRESULTS 1000`,
+                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM Deposit WHERE TxnDate >= '${startDate}' MAXRESULTS 1000`,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
@@ -202,9 +217,10 @@ export class QuickBooksConnector extends BaseConnector {
 
     private async fetchSalesReceipts() {
         try {
-            // Get sales receipts from this year (immediate payments without invoices)
+            // Get sales receipts from last 2 years for date filtering
+            const { startDate } = this.getDateRange();
             const response = await fetch(
-                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM SalesReceipt WHERE TxnDate >= '${new Date().getFullYear()}-01-01' MAXRESULTS 1000`,
+                `${this.baseUrl}/${this.realmId}/query?query=SELECT * FROM SalesReceipt WHERE TxnDate >= '${startDate}' MAXRESULTS 1000`,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.accessToken}`,
@@ -335,14 +351,25 @@ export class QuickBooksConnector extends BaseConnector {
                 type: txn.type
             }));
 
-        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Weekly Collections: $${paymentsCollectedWeekly}, Avg Case Value: $${avgCaseValue}`);
+        // Create normalized transactions array for frontend date filtering
+        const transactions = allCollections.map((txn: any) => ({
+            id: txn.Id,
+            type: txn.type as 'deposit' | 'payment' | 'salesReceipt' | 'invoice',
+            clientName: txn.CustomerRef?.name || txn.EntityRef?.name || "Unknown Client",
+            amount: parseFloat(txn.TotalAmt || 0),
+            date: txn.TxnDate,
+            account: txn.DepositToAccountRef?.name || txn.AccountRef?.name
+        }));
+
+        console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Weekly Collections: $${paymentsCollectedWeekly}, Total Transactions: ${transactions.length}`);
 
         return {
             revenueYTD: Math.round(revenueYTD),
             closedCasesWeekly: weeklyInvoices.length + weeklyCollections.length,
             avgCaseValue: Math.round(avgCaseValue),
             paymentsCollectedWeekly: Math.round(paymentsCollectedWeekly),
-            recentCollections
+            recentCollections,
+            transactions
         };
     }
 }

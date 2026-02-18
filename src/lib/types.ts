@@ -71,12 +71,23 @@ export interface GHLMetric {
     avgTimeOnPhone: string;
 }
 
+export interface QBTransaction {
+    id: string;
+    type: 'deposit' | 'payment' | 'salesReceipt' | 'invoice';
+    clientName: string;
+    amount: number;
+    date: string;
+    account?: string;
+}
+
 export interface QBMetric {
     revenueYTD: number;
     closedCasesWeekly: number;
     avgCaseValue: number;
     paymentsCollectedWeekly: number;
-    recentCollections: Array<{ id: string; clientName: string; amount: number; date: string }>;
+    recentCollections: Array<{ id: string; clientName: string; amount: number; date: string; type?: string }>;
+    // All transactions for date filtering
+    transactions: QBTransaction[];
 }
 
 export interface FirmMetrics {
