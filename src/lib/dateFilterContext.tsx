@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
-export type DateRange = "today" | "this_week" | "this_month" | "this_quarter" | "this_year" | "custom";
+export type DateRange = "today" | "this_week" | "this_month" | "this_quarter" | "this_year" | "all_time" | "custom";
 
 export interface DateFilter {
     range: DateRange;
@@ -65,6 +65,12 @@ function getDateRangeValues(range: DateRange): { start: Date; end: Date; label: 
         case "this_year": {
             const startOfYear = new Date(today.getFullYear(), 0, 1);
             return { start: startOfYear, end: endOfToday, label: "Year to Date" };
+        }
+
+        case "all_time": {
+            // Start from 10 years ago to capture all historical data
+            const startOfAllTime = new Date(today.getFullYear() - 10, 0, 1);
+            return { start: startOfAllTime, end: endOfToday, label: "All Time" };
         }
 
         default:
