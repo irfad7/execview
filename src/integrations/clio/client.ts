@@ -65,75 +65,145 @@ export class ClioConnector extends BaseConnector {
     }
 
     async fetchMatters(): Promise<ClioMatter[]> {
-        // Try with full fields first
-        const fullFields = 'id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
-        // Minimal fields fallback (without billing info that requires special scope)
+        // Start with minimal fields that should always work
         const minimalFields = 'id,display_number,description,status,practice_area{id,name},client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
+        // Full fields including billing (requires bills:read scope to be enabled in Clio Developer Portal)
+        const fullFields = 'id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
 
+        // Try minimal fields first (more reliable)
         try {
-            const params = new URLSearchParams({
-                status: 'open',
-                limit: '100',
-                fields: fullFields
-            });
-            const data = await this.makeRequest(`/matters.json?${params}`);
-            return data.data || [];
-        } catch (error) {
-            // If full fields fail (e.g., no billing scope), try minimal fields
-            console.warn("Clio full fields request failed, trying minimal fields:", error);
+            console.log("Clio: Fetching matters with minimal fields...");
             const params = new URLSearchParams({
                 status: 'open',
                 limit: '100',
                 fields: minimalFields
             });
             const data = await this.makeRequest(`/matters.json?${params}`);
-            return data.data || [];
+            const matters = data.data || [];
+            console.log(`Clio: Found ${matters.length} open matters`);
+
+            // Try to fetch billing info separately if we got matters
+            if (matters.length > 0) {
+                try {
+                    console.log("Clio: Attempting to fetch billing info...");
+                    const billingParams = new URLSearchParams({
+                        status: 'open',
+                        limit: '100',
+                        fields: 'id,outstanding_balance'
+                    });
+                    const billingData = await this.makeRequest(`/matters.json?${billingParams}`);
+                    const billingMap = new Map((billingData.data || []).map((m: any) => [m.id, m.outstanding_balance]));
+
+                    // Merge billing data into matters
+                    matters.forEach((matter: any) => {
+                        matter.outstanding_balance = billingMap.get(matter.id) || 0;
+                    });
+                    console.log("Clio: Successfully merged billing data");
+                } catch (billingError) {
+                    console.warn("Clio: Could not fetch billing info (bills:read scope may not be enabled):", billingError);
+                    // Continue without billing data - set all to 0
+                    matters.forEach((matter: any) => {
+                        matter.outstanding_balance = 0;
+                    });
+                }
+            }
+
+            return matters;
+        } catch (error) {
+            console.error("Clio: Failed to fetch matters:", error);
+            throw error;
         }
     }
 
     async fetchCalendarEntries(): Promise<ClioCalendarEntry[]> {
-        const now = new Date();
-        const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days ahead
+        try {
+            const now = new Date();
+            const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days ahead
 
-        const params = new URLSearchParams({
-            start_at_gte: now.toISOString(),
-            start_at_lte: futureDate.toISOString(),
-            fields: 'id,summary,start_at,end_at,matter{id,display_number}',
-            limit: '100'
-        });
+            const params = new URLSearchParams({
+                start_at_gte: now.toISOString(),
+                start_at_lte: futureDate.toISOString(),
+                fields: 'id,summary,start_at,end_at,matter{id,display_number}',
+                limit: '100'
+            });
 
-        const data = await this.makeRequest(`/calendar_entries.json?${params}`);
-        return data.data || [];
+            const data = await this.makeRequest(`/calendar_entries.json?${params}`);
+            return data.data || [];
+        } catch (error) {
+            // Calendar access may not be available if calendars:read scope isn't enabled
+            console.warn("Clio: Could not fetch calendar entries (calendars:read scope may not be enabled):", error);
+            return [];
+        }
     }
 
     async fetchBills(): Promise<ClioBill[]> {
-        const params = new URLSearchParams({
-            fields: 'id,total,paid,balance,due_date,matter{id}',
-            limit: '100'
-        });
+        try {
+            const params = new URLSearchParams({
+                fields: 'id,total,paid,balance,due_date,matter{id}',
+                limit: '100'
+            });
 
-        const data = await this.makeRequest(`/bills.json?${params}`);
-        return data.data || [];
+            const data = await this.makeRequest(`/bills.json?${params}`);
+            return data.data || [];
+        } catch (error) {
+            // Bills access may not be available if bills:read scope isn't enabled
+            console.warn("Clio: Could not fetch bills (bills:read scope may not be enabled):", error);
+            return [];
+        }
     }
 
     async fetchClosedMattersThisWeek(): Promise<ClioMatter[]> {
-        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        
-        const params = new URLSearchParams({
-            status: 'closed',
-            updated_since: oneWeekAgo.toISOString(),
-            fields: 'id,display_number,description,status,practice_area{id,name},updated_at',
-            limit: '100'
-        });
+        try {
+            const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        const data = await this.makeRequest(`/matters.json?${params}`);
-        return data.data || [];
+            const params = new URLSearchParams({
+                status: 'closed',
+                updated_since: oneWeekAgo.toISOString(),
+                fields: 'id,display_number,description,status,practice_area{id,name},updated_at',
+                limit: '100'
+            });
+
+            const data = await this.makeRequest(`/matters.json?${params}`);
+            return data.data || [];
+        } catch (error) {
+            console.warn("Clio: Could not fetch closed matters:", error);
+            return [];
+        }
     }
 
     async verifyConnection(): Promise<boolean> {
         try {
-            await this.makeRequest('/users/who_am_i.json');
-            return true;
+            // Try who_am_i first (requires users:read scope)
+            const response = await fetch(`${this.baseUrl}/users/who_am_i.json`, {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                return true;
+            }
+
+            // If who_am_i fails with 403, try a simple matters query instead
+            // This can happen if users:read scope isn't enabled in Clio Developer Portal
+            if (response.status === 403) {
+                console.warn('Clio: who_am_i returned 403, trying matters endpoint as fallback...');
+                const mattersResponse = await fetch(`${this.baseUrl}/matters.json?limit=1&fields=id`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (mattersResponse.ok) {
+                    console.log('Clio: Connection verified via matters endpoint');
+                    return true;
+                }
+            }
+
+            console.error('Clio connection verification failed:', response.status);
+            return false;
         } catch (error) {
             console.error('Clio connection verification failed:', error);
             return false;
@@ -190,18 +260,22 @@ export class ClioConnector extends BaseConnector {
             throw new Error("Clio not configured - missing access token");
         }
 
-        // Verify connection first
-        const isConnected = await this.verifyConnection();
-        if (!isConnected) {
-            throw new Error("Clio connection verification failed");
+        // Try to fetch matters first - this is the core data we need
+        // Don't require verifyConnection since it may fail due to scope limitations
+        let matters: ClioMatter[] = [];
+        try {
+            matters = await this.fetchMatters();
+        } catch (error) {
+            // If we can't even fetch matters, the token is likely invalid
+            console.error("Clio: Failed to fetch matters:", error);
+            throw new Error(`Clio API error: ${error instanceof Error ? error.message : String(error)}`);
         }
 
-        // Fetch all required data in parallel
-        const [matters, calendarEntries, bills, closedMattersThisWeek] = await Promise.all([
-            this.fetchMatters(),
+        // Fetch additional data - these may fail due to scope limitations, which is OK
+        const [calendarEntries, bills, closedMattersThisWeek] = await Promise.all([
             this.fetchCalendarEntries(),
             this.fetchBills(),
-            this.fetchClosedMattersThisWeek()
+            this.fetchClosedMattersThisWeek().catch(() => []) // Don't fail if this errors
         ]);
 
         // Map matters with hardcoded field IDs (reliable) + fallback to string matching

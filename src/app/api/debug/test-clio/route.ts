@@ -72,22 +72,40 @@ export async function GET() {
             results.apiTests.whoAmI = { error: e instanceof Error ? e.message : "Unknown error" };
         }
 
-        // Test 2: Fetch matters
+        // Test 2: Fetch matters (minimal fields - should work with just matters:read)
         try {
             const mattersResponse = await fetch(
-                'https://app.clio.com/api/v4/matters.json?status=open&limit=10&fields=id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name}',
+                'https://app.clio.com/api/v4/matters.json?status=open&limit=10&fields=id,display_number,description,status,client{id,name}',
                 { headers }
             );
             const status = mattersResponse.status;
             const data = await mattersResponse.text();
-            results.apiTests.matters = {
+            results.apiTests.mattersMinimal = {
                 status,
                 ok: mattersResponse.ok,
                 count: status === 200 ? JSON.parse(data).data?.length : 0,
                 sample: status === 200 ? JSON.parse(data).data?.slice(0, 2) : data
             };
         } catch (e) {
-            results.apiTests.matters = { error: e instanceof Error ? e.message : "Unknown error" };
+            results.apiTests.mattersMinimal = { error: e instanceof Error ? e.message : "Unknown error" };
+        }
+
+        // Test 2b: Fetch matters with billing fields (requires bills:read scope)
+        try {
+            const mattersResponse = await fetch(
+                'https://app.clio.com/api/v4/matters.json?status=open&limit=10&fields=id,display_number,outstanding_balance',
+                { headers }
+            );
+            const status = mattersResponse.status;
+            const data = await mattersResponse.text();
+            results.apiTests.mattersWithBilling = {
+                status,
+                ok: mattersResponse.ok,
+                note: status === 400 ? "bills:read scope may not be enabled in Clio Developer Portal" : undefined,
+                data: status === 200 ? JSON.parse(data).data?.slice(0, 2) : data
+            };
+        } catch (e) {
+            results.apiTests.mattersWithBilling = { error: e instanceof Error ? e.message : "Unknown error" };
         }
 
         // Test 3: Fetch calendar entries
