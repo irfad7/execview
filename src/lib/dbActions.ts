@@ -348,6 +348,22 @@ export async function getCachedData() {
     return getLiveDashboardData();
 }
 
+// System-level cache reader — no session required (used by cron/report routes).
+// Single-firm app: grabs the first dashboard_metrics row regardless of user.
+export async function getCachedDataForSystem(): Promise<FirmMetrics | null> {
+    const cache = await prisma.dashboardCache.findFirst({
+        where: { cacheKey: 'dashboard_metrics' },
+        orderBy: { updatedAt: 'desc' },
+    });
+    if (!cache) return null;
+    try {
+        return JSON.parse(cache.cacheData) as FirmMetrics;
+    } catch (e) {
+        console.error('Failed to parse dashboard cache (system)', e);
+        return null;
+    }
+}
+
 export async function setCachedData(data: any) {
     const user = await getUser();
     if (!user) return;

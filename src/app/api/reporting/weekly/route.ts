@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProfile, addLog, getSystemSetting, getCachedData } from '@/lib/dbActions';
+import { getProfile, addLog, getSystemSetting, getCachedDataForSystem } from '@/lib/dbActions';
 import { sendWeeklyFirmReport, WeeklyReportEmailData } from '@/lib/resendEmail';
 
 // ── Compute the most recent Mon–Sun week range label ──────────────────────────
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         }
 
         // ── Fetch real metrics from cache ─────────────────────────────────────
-        const firmMetrics = await getCachedData();
+        const firmMetrics = await getCachedDataForSystem();
 
         if (!firmMetrics) {
             await addLog('EmailSystem', 'error', 'Weekly report: no cached metrics found — run a sync first');
