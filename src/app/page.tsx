@@ -61,16 +61,10 @@ export default function OverviewPage() {
     // Show sync errors if any
     const syncErrors = (data as any)?.syncErrors;
 
-    // Calculate real metrics from data, filtered by date range
+    // Get all cases - don't filter by date for case count
+    // Law firms need to see all open cases regardless of when opened
     const allCases = data.clio || [];
-
-    // Filter cases and opportunities by selected date range
-    const clioData = useMemo(() => {
-        return allCases.filter(c => {
-            if (!c.openDate) return true;
-            return isInRange(c.openDate);
-        });
-    }, [allCases, isInRange]);
+    const clioData = allCases;
 
     const filteredOpportunities = useMemo(() => {
         const allOpps = data.ghl?.opportunityFeed || [];

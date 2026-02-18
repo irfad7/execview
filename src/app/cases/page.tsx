@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
 import { useDashboard } from "@/lib/context";
-import { useDateFilter } from "@/lib/dateFilterContext";
 import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/Card";
 import {
@@ -24,7 +22,6 @@ function cn(...inputs: ClassValue[]) {
 
 export default function CasesPage() {
     const { data, loading } = useDashboard();
-    const { filter, isInRange } = useDateFilter();
 
     if (loading || !data) {
         return (
@@ -39,13 +36,10 @@ export default function CasesPage() {
 
     const allCases = data.clio || [];
 
-    // Filter cases opened within the selected date range
-    const clioData = useMemo(() => {
-        return allCases.filter(c => {
-            if (!c.openDate) return true; // Include if no open date
-            return isInRange(c.openDate);
-        });
-    }, [allCases, isInRange]);
+    // Show ALL open cases - don't filter by open date
+    // For cases, the date filter will affect metrics calculations, not the case list
+    // Law firms need to see all their open cases regardless of when they were opened
+    const clioData = allCases;
 
     // Calculate metrics based on filtered data
     const casesWithNoDiscovery = clioData.filter(c => !c.discoveryReceived);
@@ -73,7 +67,7 @@ export default function CasesPage() {
                     <div>
                         <h2 className="text-2xl font-bold text-white font-display tracking-tight">Case Portfolio</h2>
                         <p className="text-zinc-400 text-sm font-medium">
-                            Showing {clioData.length} cases opened during {filter.label}
+                            Showing {clioData.length} open cases from Clio
                         </p>
                     </div>
                     <button
@@ -89,7 +83,7 @@ export default function CasesPage() {
                     {/* Metrics Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
-                            title={`Cases (${filter.label})`}
+                            title="Open Cases"
                             value={clioData.length}
                             icon={<Briefcase className="w-4 h-4" />}
                         />
