@@ -115,7 +115,8 @@ export async function POST(request: Request) {
         };
 
         // ── Send via Resend ────────────────────────────────────────────────────
-        const result = await sendWeeklyFirmReport(profile.email, emailData);
+        const sendTo = toOverride || profile.email!;
+        const result = await sendWeeklyFirmReport(sendTo, emailData);
 
         if (!result.success) {
             await addLog('EmailSystem', 'error', `Weekly report send failed: ${result.error}`);
@@ -125,13 +126,13 @@ export async function POST(request: Request) {
         await addLog(
             'EmailSystem',
             'success',
-            `Weekly firm metrics report sent to ${profile.email} (Resend ID: ${result.id})`
+            `Weekly firm metrics report sent to ${sendTo} (Resend ID: ${result.id})`
         );
 
         return NextResponse.json({
             message: 'Weekly report sent successfully',
             resendId: result.id,
-            sentTo: profile.email,
+            sentTo: sendTo,
             weekRange,
         });
 

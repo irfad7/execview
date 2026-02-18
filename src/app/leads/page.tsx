@@ -76,7 +76,9 @@ export default function LeadsPage() {
         const totalLeads = leads.length;
         const consultations = leads.filter(l =>
             l.stage?.toLowerCase().includes('consult') ||
-            l.stage?.toLowerCase().includes('scheduled')
+            l.stage?.toLowerCase().includes('scheduled') ||
+            l.stage?.toLowerCase().includes('booked') ||
+            l.stage?.toLowerCase().includes('appointment')
         ).length;
         const retainers = leads.filter(l =>
             l.stage?.toLowerCase().includes('retainer') ||

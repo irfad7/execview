@@ -7,92 +7,108 @@ const prisma = new PrismaClient();
  * POST /api/webhooks/gohighlevel/call
  *
  * Receives call completion data from a GHL workflow.
- * Set up a GHL workflow with trigger: "Call Status → Completed"
- * and action: "Send HTTP Request" → POST to this URL.
  *
- * Expected payload:
- * {
- *   "locationId": "{{location.id}}",
- *   "contactId":  "{{contact.id}}",
- *   "callDuration": {{call.duration}},   // seconds (integer)
- *   "callStatus":   "{{call.status}}",   // "completed" | "missed" | "voicemail"
- *   "calledAt":     "{{now}}"            // ISO timestamp
- * }
+ * GHL sends "Custom Data" key-value pairs either:
+ *   a) Flat in the body: { contactId, callDuration, callStatus, calledAt, ...standardGHLFields }
+ *   b) Wrapped under a "customData" key: { customData: { contactId, ... }, ...standardGHLFields }
  *
- * Optional (include if the workflow has opportunity context):
- *   "opportunityId": "{{opportunity.id}}"
+ * We handle both formats. locationId is not required — single-firm setup.
  */
+
+/** Parse call duration to seconds. GHL may send:
+ *  - Number:  245
+ *  - String seconds: "245"
+ *  - String m:s: "4:05"
+ */
+function parseDurationToSeconds(raw: string | number | undefined): number {
+    if (!raw) return 0;
+    if (typeof raw === 'number') return Math.round(raw);
+    const str = String(raw).trim();
+    if (str.includes(':')) {
+        const [mins, secs] = str.split(':').map(Number);
+        return (mins || 0) * 60 + (secs || 0);
+    }
+    return parseInt(str, 10) || 0;
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
+        const rawBody = await request.text();
+        console.log("Call webhook raw payload:", rawBody.slice(0, 500));
 
-        const { locationId, contactId, opportunityId, callDuration, callStatus, calledAt } = body;
-
-        if (!locationId || !contactId) {
-            return NextResponse.json(
-                { error: "Missing required fields: locationId and contactId" },
-                { status: 400 }
-            );
+        let body: any;
+        try {
+            body = JSON.parse(rawBody);
+        } catch {
+            return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
         }
 
-        // Find the user associated with this location
+        // GHL may nest custom data under "customData" or send it flat at the top level
+        const data = body.customData || body;
+
+        const contactId: string | undefined =
+            data.contactId || body.contact_id || body.id;
+
+        const callDuration = data.callDuration ?? data.call_duration;
+        const callStatus: string = data.callStatus || data.call_status || 'completed';
+        const calledAt: string = data.calledAt || data.called_at || new Date().toISOString();
+
+        if (!contactId) {
+            console.error("Call webhook: missing contactId. Full payload:", rawBody.slice(0, 300));
+            return NextResponse.json({ error: "Missing contactId" }, { status: 400 });
+        }
+
+        const durationSeconds = parseDurationToSeconds(callDuration);
+        console.log(`Call webhook: contactId=${contactId}, duration=${durationSeconds}s, status=${callStatus}`);
+
+        // Single-firm setup — find the one active GHL (execview) config
         const apiConfig = await prisma.apiConfig.findFirst({
-            where: { service: "execview", realmId: locationId, isActive: true }
+            where: { service: "execview", isActive: true }
         });
 
         if (!apiConfig) {
-            console.error(`Call webhook: no active GHL integration for locationId: ${locationId}`);
+            console.error("Call webhook: no active GHL integration found");
             return NextResponse.json({ error: "Integration not found" }, { status: 404 });
         }
 
         const userId = apiConfig.userId;
-        const durationSeconds = typeof callDuration === 'number' ? callDuration : parseInt(callDuration || '0', 10);
 
-        // Resolve target opportunity: direct ID → most recent open opp for contact
-        let targetOpportunityId: string | null = opportunityId || null;
+        // Resolve target opportunity: most recent active opp for this contact
+        const recentOpp = await prisma.gHLOpportunity.findFirst({
+            where: { contactId, userId, isActive: true },
+            orderBy: { dateCreated: 'desc' }
+        });
 
-        if (!targetOpportunityId && contactId) {
-            const recentOpp = await prisma.gHLOpportunity.findFirst({
-                where: { contactId, userId, isActive: true },
-                orderBy: { dateCreated: 'desc' }
-            });
-            targetOpportunityId = recentOpp?.opportunityId || null;
-        }
-
-        if (targetOpportunityId) {
-            // Merge call data into opportunity's customFields
-            const existing = await prisma.gHLOpportunity.findFirst({
-                where: { opportunityId: targetOpportunityId, userId }
-            });
-
-            const existingCustomFields = existing?.customFields
-                ? JSON.parse(existing.customFields)
+        if (recentOpp) {
+            const existingCf = recentOpp.customFields
+                ? (() => { try { return JSON.parse(recentOpp.customFields!); } catch { return {}; } })()
                 : {};
 
-            const updatedCustomFields = {
-                ...existingCustomFields,
-                callDurationSeconds: durationSeconds,
-                callStatus: callStatus || 'completed',
-                lastCallAt: calledAt || new Date().toISOString()
-            };
-
-            await prisma.gHLOpportunity.updateMany({
-                where: { opportunityId: targetOpportunityId, userId },
-                data: { customFields: JSON.stringify(updatedCustomFields), updatedAt: new Date() }
+            await prisma.gHLOpportunity.update({
+                where: { id: recentOpp.id },
+                data: {
+                    customFields: JSON.stringify({
+                        ...existingCf,
+                        callDurationSeconds: durationSeconds,
+                        callStatus,
+                        lastCallAt: calledAt
+                    }),
+                    updatedAt: new Date()
+                }
             });
 
-            console.log(`Call webhook: stored ${durationSeconds}s call on opportunity ${targetOpportunityId}`);
+            console.log(`Call webhook: stored ${durationSeconds}s on opportunity ${recentOpp.opportunityId}`);
         } else {
-            // No opportunity found — log against the contact instead (store in first matching opp when it arrives)
-            console.warn(`Call webhook: no opportunity found for contact ${contactId}, duration=${durationSeconds}s`);
+            console.warn(`Call webhook: no opportunity found for contactId=${contactId}`);
         }
 
-        // Invalidate dashboard cache so next load reflects updated call times
+        // Invalidate dashboard cache
         await prisma.dashboardCache.deleteMany({ where: { userId } });
 
         return NextResponse.json({
             status: "ok",
-            opportunityUpdated: !!targetOpportunityId,
+            contactId,
+            opportunityUpdated: !!recentOpp,
             durationSeconds
         });
 
