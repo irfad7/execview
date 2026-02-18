@@ -15,7 +15,7 @@ export async function sendWeeklyFirmReport(
 ): Promise<SendResult> {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const fromAddress = process.env.RESEND_FROM_EMAIL || 'reports@updates.mylegalacademy.com';
-    const subject = `Weekly Firm Metrics — ${data.weekRange}`;
+    const subject = `Your Weekly Performance Report — ${data.weekRange}`;
 
     const { data: result, error } = await resend.emails.send({
         from: `${data.firmName} Reports <${fromAddress}>`,

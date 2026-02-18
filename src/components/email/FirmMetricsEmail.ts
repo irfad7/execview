@@ -343,14 +343,16 @@ export function generateFirmMetricsEmailHtml(d: WeeklyReportEmailData): string {
           <!-- ── CTA ── -->
           <tr>
             <td style="padding:28px 40px 0;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px;">
-                <tr>
-                  <td style="padding:22px 28px;text-align:center;">
-                    <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">View Your Full Dashboard</div>
-                    <div style="font-size:12px;color:#c7d2fe;">Deep-dive analytics, case timelines, and pipeline details</div>
-                  </td>
-                </tr>
-              </table>
+              <a href="https://execview.vercel.app/" target="_blank" style="text-decoration:none;display:block;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px;">
+                  <tr>
+                    <td style="padding:22px 28px;text-align:center;">
+                      <div style="font-size:15px;font-weight:700;color:#ffffff;margin-bottom:4px;">View Your Full Dashboard →</div>
+                      <div style="font-size:12px;color:#c7d2fe;">Deep-dive analytics, case timelines, and pipeline details</div>
+                    </td>
+                  </tr>
+                </table>
+              </a>
             </td>
           </tr>
 
