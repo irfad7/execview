@@ -56,6 +56,13 @@ export default function CasesPage() {
         return diffDays >= 0 && diffDays < 7;
     };
 
+    const formatCourtDate = (dateStr?: string) => {
+        if (!dateStr) return "No date set";
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    };
+
     return (
         <div className="flex-1 flex flex-col">
             <Header title="Case Management" />
@@ -158,7 +165,7 @@ export default function CasesPage() {
                                                     isSoon(c.upcomingCourtDate) ? "text-error" : "text-sidebar-foreground"
                                                 )}>
                                                     <Calendar className="w-4 h-4" />
-                                                    {c.upcomingCourtDate || "No date set"}
+                                                    {formatCourtDate(c.upcomingCourtDate)}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">

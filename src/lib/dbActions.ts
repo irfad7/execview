@@ -152,6 +152,12 @@ export async function refreshDashboardData() {
                 metrics.clio = clioRes.data.matters || [];
                 metrics.activeCases = clioRes.data.activeCases || 0;
 
+                // New cases signed — sourced from Clio matter created_at (ground truth).
+                // A matter is only created in Clio once the retainer is signed and the
+                // file is opened, so this is equivalent to "retainers signed" counts.
+                metrics.newCasesSignedWeekly = clioRes.data.newCasesSignedWeekly || 0;
+                metrics.newCasesSignedYTD = clioRes.data.newCasesSignedYTD || 0;
+
                 // Store case management data for dashboard
                 metrics.clioData = {
                     caseManagement: clioRes.data.caseManagement || {},
@@ -165,7 +171,7 @@ export async function refreshDashboardData() {
                     metrics.paymentsCollectedWeekly = clioRes.data.bookkeeping.paymentsCollectedThisWeek || 0;
                     metrics.avgCaseValue = clioRes.data.bookkeeping.averageCaseValueYTD || 0;
                 }
-                console.log("Clio: Successfully fetched", metrics.clio.length, "cases");
+                console.log("Clio: Successfully fetched", metrics.clio.length, "cases,", metrics.newCasesSignedWeekly, "new this week,", metrics.newCasesSignedYTD, "new YTD");
 
                 // Log warning if no cases found
                 if (metrics.clio.length === 0) {
@@ -205,8 +211,37 @@ export async function refreshDashboardData() {
             const ghlRes = await ghl.fetchMetrics();
             if (ghlRes.status === "success") {
                 metrics.ghl = ghlRes.data;
-                metrics.newCasesSignedWeekly = ghlRes.data.retainersSigned || 0;
+                // Note: newCasesSignedWeekly/YTD are sourced from Clio (matter created_at),
+                // NOT from GHL retainersSigned, which is a CRM pipeline stage — not ground truth.
                 console.log("GHL: Successfully fetched", ghlRes.data.totalOpportunities, "opportunities,", ghlRes.data.totalContacts, "contacts");
+
+                // Merge stored call durations (written by the /call webhook) into the opportunity feed
+                try {
+                    const callData = await prisma.gHLOpportunity.findMany({
+                        where: { userId: user.id, isActive: true, customFields: { not: null } },
+                        select: { opportunityId: true, customFields: true }
+                    });
+                    const callMap: Record<string, string> = {};
+                    for (const opp of callData) {
+                        try {
+                            const cf = JSON.parse(opp.customFields!);
+                            if (cf.callDurationSeconds > 0) {
+                                const mins = Math.floor(cf.callDurationSeconds / 60);
+                                const secs = cf.callDurationSeconds % 60;
+                                callMap[opp.opportunityId] = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                            }
+                        } catch { /* malformed JSON — skip */ }
+                    }
+                    if (Object.keys(callMap).length > 0) {
+                        metrics.ghl.opportunityFeed = metrics.ghl.opportunityFeed.map((opp: any) => ({
+                            ...opp,
+                            timeOnPhone: callMap[opp.id] || opp.timeOnPhone
+                        }));
+                        console.log("GHL: Merged call durations for", Object.keys(callMap).length, "opportunities");
+                    }
+                } catch (callErr) {
+                    console.warn("GHL: Failed to merge call durations (non-fatal):", callErr);
+                }
             } else {
                 console.warn("GHL direct fetch returned non-success status");
                 metrics.syncErrors = metrics.syncErrors || {};

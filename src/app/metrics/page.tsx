@@ -127,7 +127,13 @@ export default function MetricsPage() {
 
     // --- Cases ---
     const activeCases = (data.clio || []).length;
-    const newCasesSignedYTD = data.newCasesSignedYTD || data.ghl?.retainersSigned || 0;
+
+    // New cases signed in selected period: filter Clio matters by openDate (= matter created_at).
+    // This is the correct source — a Clio matter is created when the retainer is signed.
+    const newCasesInPeriod = useMemo(() =>
+        (data.clio || []).filter(c => c.openDate && isInRange(new Date(c.openDate))).length,
+        [data.clio, isInRange]
+    );
 
     return (
         <PageTransition>
@@ -286,7 +292,7 @@ export default function MetricsPage() {
                                     <AnimatedCard delay={0.6}>
                                         <MetricCard
                                             title={`New Cases Signed (${filter.label})`}
-                                            value={retainersInPeriod || newCasesSignedYTD}
+                                            value={newCasesInPeriod}
                                             icon={<Star className="w-4 h-4 text-success" />}
                                         />
                                     </AnimatedCard>

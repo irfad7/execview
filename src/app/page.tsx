@@ -84,6 +84,29 @@ export default function OverviewPage() {
     const ytdRevenue = data.qb?.revenueYTD || 0;
     const periodOpportunities = filteredOpportunities.filter(o => o.status === 'open').length;
 
+    // Derived from filtered opportunity feed so they respond to the date filter
+    const periodRetainers = useMemo(() =>
+        filteredOpportunities.filter(o =>
+            o.stage?.toLowerCase().includes('retainer') ||
+            o.stage?.toLowerCase().includes('signed') ||
+            o.stage?.toLowerCase().includes('hired')
+        ).length,
+        [filteredOpportunities]
+    );
+    const periodConsults = useMemo(() =>
+        filteredOpportunities.filter(o =>
+            o.stage?.toLowerCase().includes('consult') ||
+            o.stage?.toLowerCase().includes('scheduled') ||
+            o.stage?.toLowerCase().includes('booked')
+        ).length,
+        [filteredOpportunities]
+    );
+    // New cases signed: filter Clio matters by openDate (created_at) within the selected period
+    const periodNewCases = useMemo(() =>
+        clioData.filter(c => c.openDate && isInRange(new Date(c.openDate))).length,
+        [clioData, isInRange]
+    );
+
     return (
         <PageTransition>
             <div className="flex-1 flex flex-col">
@@ -200,7 +223,7 @@ export default function OverviewPage() {
                             <AnimatedCard delay={0.7}>
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
                                     <div className="text-zinc-500 text-sm mb-4 font-medium">Retainers Signed</div>
-                                    <div className="text-3xl font-bold text-white mb-2">{data.ghl?.retainersSigned || 0}</div>
+                                    <div className="text-3xl font-bold text-white mb-2">{periodRetainers}</div>
                                     <div className="text-xs text-zinc-500">{filter.label}</div>
                                 </div>
                             </AnimatedCard>
@@ -208,7 +231,7 @@ export default function OverviewPage() {
                             <AnimatedCard delay={0.8}>
                                 <div className="glass-card p-6 flex flex-col justify-between h-full">
                                     <div className="text-zinc-500 text-sm mb-4 font-medium">Consultations</div>
-                                    <div className="text-3xl font-bold text-white mb-2">{data.ghl?.consultsScheduled || 0}</div>
+                                    <div className="text-3xl font-bold text-white mb-2">{periodConsults}</div>
                                     <div className="text-xs text-zinc-500">{filter.label}</div>
                                 </div>
                             </AnimatedCard>
@@ -219,7 +242,7 @@ export default function OverviewPage() {
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="text-zinc-500 text-sm mb-1 font-medium">New Signed Cases</div>
-                                                <div className="text-2xl font-bold text-white">{data.newCasesSignedWeekly || 0}</div>
+                                                <div className="text-2xl font-bold text-white">{periodNewCases}</div>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">

@@ -2,6 +2,84 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.3.1] - 2026-02-18
+
+### Added — Resend email library + full weekly Firm Metrics Report
+
+#### New files
+- **`src/lib/resendEmail.ts`** — Resend SDK wrapper; exports `sendWeeklyFirmReport(to, data)` and `WeeklyReportEmailData` type
+- **`src/components/email/FirmMetricsEmail.ts`** — Self-contained pure-HTML email template (table-based, fully inline styles for email client compatibility); covers all 8 metric sections
+
+#### Email template covers (Google Reviews excluded — data unavailable)
+1. Revenue — Weekly + YTD (QuickBooks)
+2. New Leads — Weekly + YTD (GoHighLevel)
+3. Conversion Rate — Consults/Leads % + Retainers/Consults % (GoHighLevel)
+4. Marketing ROI — YTD ROI %, Cost Per Acquisition, Net Return (QuickBooks + GHL)
+5. Leads by Source — bar chart (Google LSA, Social Media, Website/SEO, Google Business Profile, Referrals)
+6. New Cases Signed — Weekly + YTD (Clio)
+7. Active Cases — point-in-time count (Clio)
+
+#### Updated files
+- **`src/app/api/reporting/weekly/route.ts`** — Replaced Nodemailer/mock-data implementation with:
+  - Real `getCachedData()` pull from dashboard cache
+  - Full `WeeklyReportEmailData` assembly from live `FirmMetrics`
+  - Resend delivery via `sendWeeklyFirmReport()`
+  - Resend message ID logged on success; error logged on failure
+- **`.env.local`** — Added `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
+
+#### Installed
+- `resend` npm package (v4.x)
+
+---
+
+## [1.3.0] - 2026-02-18
+
+### Fixed — All dashboard date-filter mismatches + court date display
+
+#### Cases page
+- **Court dates rendered as raw ISO strings** (e.g. `2025-09-22T13:00:00-04:00`) — now formatted as `Sep 22, 2025` via `formatCourtDate()` helper
+
+#### Metrics page
+- **New Cases Signed** used `retainersInPeriod || newCasesSignedYTD` — if GHL had 0 retainers in the selected period it would fall back to the Clio YTD total (13), showing a wrong number
+- Now computes `newCasesInPeriod` by filtering `data.clio` on `openDate` using `isInRange()` — fully responds to date filter, uses correct source
+
+#### Overview page (3 cards fixed)
+- **Retainers Signed** — was showing cached GHL total (`data.ghl.retainersSigned`) regardless of date filter; now counts retainer/signed/hired stage opportunities from the already-filtered `filteredOpportunities`
+- **Consultations** — same problem, same fix using consult/scheduled/booked stage filter
+- **New Signed Cases** — was showing `data.newCasesSignedWeekly` (fixed 7-day window) regardless of date filter; now filters `data.clio` by `openDate` using `isInRange()` — YTD stat in the same card still shows Clio YTD
+
+#### Leads page
+- **Conversion Rate** — was showing `data.ghl.conversionRate` (a stale pre-computed total that never changed); now calculated as `retainers / totalLeads` from the date-filtered opportunity feed; added sub-label showing the formula and period
+
+---
+
+## [1.2.9] - 2026-02-18
+
+### Fixed — New Cases Signed (Weekly + YTD)
+
+- **Weekly was always `0`**: `newCasesSignedWeekly` was never populated from real data
+- **YTD used wrong source**: `newCasesSignedYTD` was sourced from GHL `retainersSigned`
+  (a CRM pipeline stage, not ground truth) and was the only count being set at all
+
+**Root cause:** Clio matter `created_at` is the correct source — a matter is only
+created in Clio once the retainer is signed and the file is opened, making it
+equivalent to "retainers signed." No GHL webhook is needed.
+
+**Changes:**
+- Added `fetchMatterCountSince(isoDate)` private helper to Clio client — uses
+  confirmed-valid `created_since` filter on the matters endpoint, counts all statuses
+- Added `fetchNewCasesCounts()` to Clio client — runs two parallel calls:
+  - Weekly: matters created since 7 days ago
+  - YTD: matters created since Jan 1 of current year
+- `fetchMetrics()` now includes `newCasesSignedWeekly` and `newCasesSignedYTD` in
+  its return value (both sourced from Clio `created_at`)
+- `dbActions.ts`: reads both counts from Clio result; removed the GHL
+  `retainersSigned` override that was incorrectly setting `newCasesSignedWeekly`
+
+**Verified against live Clio data:** 2 new cases this week, 13 YTD
+
+---
+
 ## [1.2.8] - 2026-02-18
 
 ### Fixed

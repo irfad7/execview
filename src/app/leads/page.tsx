@@ -78,9 +78,19 @@ export default function LeadsPage() {
             l.stage?.toLowerCase().includes('consult') ||
             l.stage?.toLowerCase().includes('scheduled')
         ).length;
+        const retainers = leads.filter(l =>
+            l.stage?.toLowerCase().includes('retainer') ||
+            l.stage?.toLowerCase().includes('signed') ||
+            l.stage?.toLowerCase().includes('hired')
+        ).length;
+        // Conversion = retainers / total leads for the period
+        const conversionRate = totalLeads > 0
+            ? Math.round((retainers / totalLeads) * 100)
+            : 0;
         return {
             leadsInPeriod: totalLeads,
-            consultations
+            consultations,
+            conversionRate
         };
     }, [leads]);
 
@@ -117,8 +127,9 @@ export default function LeadsPage() {
                         />
                         <MetricCard
                             title="Conversion Rate"
-                            value={`${data.ghl?.conversionRate || 0}%`}
+                            value={`${filteredMetrics.conversionRate}%`}
                             icon={<Activity className="w-4 h-4 text-purple-500" />}
+                            subValue={`Retainers / Leads (${filter.label})`}
                         />
                     </div>
 

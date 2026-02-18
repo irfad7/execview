@@ -1,74 +1,143 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
-import { getProfile, addLog, getSystemSetting } from '@/lib/dbActions';
+import { getProfile, addLog, getSystemSetting, getCachedData } from '@/lib/dbActions';
+import { sendWeeklyFirmReport, WeeklyReportEmailData } from '@/lib/resendEmail';
 
-export async function POST() {
+// ── Compute the most recent Mon–Sun week range label ──────────────────────────
+function getWeekRange(): { weekRange: string; yearLabel: string } {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sun, 1 = Mon …
+    const diffToLastMon = day === 0 ? 6 : day - 1;
+    const lastMon = new Date(now);
+    lastMon.setDate(now.getDate() - diffToLastMon - 7);
+    const lastSun = new Date(lastMon);
+    lastSun.setDate(lastMon.getDate() + 6);
+
+    const fmt = (d: Date) =>
+        d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    return {
+        weekRange: `${fmt(lastMon)} – ${fmt(lastSun)}, ${lastSun.getFullYear()}`,
+        yearLabel: lastSun.getFullYear().toString(),
+    };
+}
+
+export async function POST(request: Request) {
     try {
-        const profile = await getProfile();
-        const schedule = await getSystemSetting("reporting_schedule");
+        // Optional body: { to?: string } — overrides the profile email
+        let toOverride: string | undefined;
+        try {
+            const body = await request.json();
+            if (typeof body?.to === 'string' && body.to.includes('@')) toOverride = body.to;
+        } catch { /* no body or non-JSON — that's fine */ }
 
-        if (!schedule || !schedule.enabled) {
-            return NextResponse.json({ message: "Reporting is disabled" });
+        const profile = await getProfile();
+
+        if (!profile || (!profile.email && !toOverride)) {
+            return NextResponse.json({ message: 'No profile/email found — cannot send report' }, { status: 400 });
         }
 
-        // Setup transporter (use environment variables)
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: parseInt(process.env.EMAIL_PORT || '587'),
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
+        const schedule = await getSystemSetting('reporting_schedule');
+        if (schedule && schedule.enabled === false) {
+            return NextResponse.json({ message: 'Reporting is disabled in settings' });
+        }
+
+        // ── Fetch real metrics from cache ─────────────────────────────────────
+        const firmMetrics = await getCachedData();
+
+        if (!firmMetrics) {
+            await addLog('EmailSystem', 'error', 'Weekly report: no cached metrics found — run a sync first');
+            return NextResponse.json({ error: 'No cached metrics available. Run a sync first.' }, { status: 503 });
+        }
+
+        const { ghl, qb } = firmMetrics;
+
+        // ── Conversion rates ─────────────────────────────────────────────────
+        // conversionRate and closeRate come from GHL as percentages
+        const consultsPerLeadRate = typeof ghl.conversionRate === 'number' ? ghl.conversionRate : 0;
+        const retainersPerConsultRate = typeof ghl.closeRate === 'number' ? ghl.closeRate : 0;
+
+        // ── Marketing ROI ─────────────────────────────────────────────────────
+        const adSpendYTD = qb.adSpendYTD ?? 0;
+        const feesCollectedYTD = qb.revenueYTD ?? 0;
+        const roiPercent = adSpendYTD > 0
+            ? ((feesCollectedYTD - adSpendYTD) / adSpendYTD) * 100
+            : 0;
+        const retainersSigned = ghl.retainersSigned ?? firmMetrics.newCasesSignedYTD ?? 1;
+        const costPerAcquisition = retainersSigned > 0 ? adSpendYTD / retainersSigned : 0;
+
+        // ── Lead sources — filter to known sources only ───────────────────────
+        const knownSources = ['Google LSA', 'Social Media', 'Website/SEO', 'Google Business Profile', 'Referral', 'Referrals'];
+        const rawSources = ghl.leadSources ?? {};
+        const leadSources: Record<string, number> = {};
+        for (const src of knownSources) {
+            if (rawSources[src] !== undefined && rawSources[src] > 0) {
+                // Normalise "Referral" / "Referrals" → "Referrals"
+                const key = src === 'Referral' ? 'Referrals' : src;
+                leadSources[key] = (leadSources[key] ?? 0) + rawSources[src];
+            }
+        }
+        // Also include any remaining sources not in the known list
+        for (const [src, cnt] of Object.entries(rawSources)) {
+            if (!knownSources.includes(src) && cnt > 0) {
+                leadSources[src] = cnt;
+            }
+        }
+
+        // ── Assemble email payload ─────────────────────────────────────────────
+        const { weekRange, yearLabel } = getWeekRange();
+
+        const emailData: WeeklyReportEmailData = {
+            firmName: profile.firmName || 'My Firm',
+            userName: profile.name || 'Team',
+            weekRange,
+            yearLabel,
+
+            revenueWeekly: qb.paymentsCollectedWeekly ?? 0,
+            revenueYTD: feesCollectedYTD,
+
+            leadsWeekly: ghl.leadsWeekly ?? 0,
+            leadsYTD: ghl.leadsYTD ?? 0,
+
+            consultsPerLeadRate,
+            retainersPerConsultRate,
+
+            adSpendYTD,
+            feesCollectedYTD,
+            roiPercent,
+            costPerAcquisition,
+
+            leadSources,
+
+            newCasesWeekly: firmMetrics.newCasesSignedWeekly ?? 0,
+            newCasesYTD: firmMetrics.newCasesSignedYTD ?? 0,
+
+            activeCases: firmMetrics.activeCases ?? 0,
+        };
+
+        // ── Send via Resend ────────────────────────────────────────────────────
+        const result = await sendWeeklyFirmReport(profile.email, emailData);
+
+        if (!result.success) {
+            await addLog('EmailSystem', 'error', `Weekly report send failed: ${result.error}`);
+            return NextResponse.json({ error: result.error }, { status: 500 });
+        }
+
+        await addLog(
+            'EmailSystem',
+            'success',
+            `Weekly firm metrics report sent to ${profile.email} (Resend ID: ${result.id})`
+        );
+
+        return NextResponse.json({
+            message: 'Weekly report sent successfully',
+            resendId: result.id,
+            sentTo: profile.email,
+            weekRange,
         });
 
-        // Mock metrics for the email
-        const metrics = {
-            revenue: 45200,
-            leads: 124,
-            conversion: 18.5
-        };
-
-        if (!profile || !profile.email) {
-            console.error("No profile found for reporting");
-            return NextResponse.json({ message: "No profile found" });
-        }
-
-        const mailOptions = {
-            from: `"Reporting Portal" <${process.env.EMAIL_USER}>`,
-            to: profile.email,
-            subject: `Weekly Performance Report - ${profile.firmName || 'My Firm'}`,
-            text: `Hello ${profile.name}, your weekly report is attached.`,
-            html: `
-                <div style="font-family: sans-serif; background: #09090b; color: white; padding: 40px; border-radius: 20px;">
-                    <h1 style="color: #6366f1;">Weekly Report: ${profile.firmName || 'My Firm'}</h1>
-                    <p>Hello ${profile.name},</p>
-                    <p>Your performance report for this week is ready.</p>
-                    <ul>
-                        <li>Revenue: $${metrics.revenue.toLocaleString()}</li>
-                        <li>New Leads: ${metrics.leads}</li>
-                        <li>Conversion Rate: ${metrics.conversion}%</li>
-                    </ul>
-                    <p>Best regards,<br/>Reporting Portal</p>
-                </div>
-            `,
-            // In a real app, we'd generate a PDF server-side and attach it here
-            // attachments: [{ filename: 'Weekly_Report.pdf', content: pdfBuffer }]
-        };
-
-        // For now, if no credentials, we log success and return
-        if (!process.env.EMAIL_USER) {
-            await addLog("EmailSystem", "info", "Weekly report generated but not sent (SMTP not configured)", JSON.stringify(metrics));
-            return NextResponse.json({ message: "Report generated successfully (Log entry created)" });
-        }
-
-        await transporter.sendMail(mailOptions);
-        await addLog("EmailSystem", "success", `Weekly report sent to ${profile.email}`);
-
-        return NextResponse.json({ message: "Report sent successfully" });
     } catch (error: any) {
-        console.error("Email Error:", error);
-        await addLog("EmailSystem", "error", `Failed to send weekly report: ${error.message}`);
+        console.error('Weekly report error:', error);
+        await addLog('EmailSystem', 'error', `Weekly report exception: ${error.message}`).catch(() => {});
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

@@ -139,6 +139,31 @@ export class GoHighLevelConnector extends BaseConnector {
         const oneWeekAgo = easternNow.getTime() - 7 * 24 * 60 * 60 * 1000;
         const startOfYear = new Date(easternNow.getFullYear(), 0, 1).getTime();
 
+        // Fetch calendar events (booked consultations) — more accurate than stage-name guessing
+        let calendarConsultsYTD = 0;
+        let calendarConsultsWeekly = 0;
+        try {
+            const calendarUrl = `${this.baseUrl}/calendars/events?locationId=${this.locationId}&startTime=${startOfYear}&endTime=${easternNow.getTime()}`;
+            const calendarRes = await fetch(calendarUrl, { method: 'GET', headers: this.getHeaders() });
+            if (calendarRes.ok) {
+                const calendarData = await calendarRes.json();
+                const events: any[] = calendarData.events || calendarData.appointmentList || [];
+                const bookedEvents = events.filter((e: any) =>
+                    e.status !== 'cancelled' && e.status !== 'noshow' && e.status !== 'no_show'
+                );
+                calendarConsultsYTD = bookedEvents.length;
+                calendarConsultsWeekly = bookedEvents.filter((e: any) => {
+                    const t = new Date(e.startTime || e.dateAdded || e.createdAt).getTime();
+                    return t > oneWeekAgo;
+                }).length;
+                console.log("GHL: Calendar consults YTD:", calendarConsultsYTD, "| Weekly:", calendarConsultsWeekly);
+            } else {
+                console.warn("GHL Calendar API:", calendarRes.status, "— falling back to stage-based consult count");
+            }
+        } catch (error) {
+            console.error("GHL: Calendar fetch error (non-fatal):", error);
+        }
+
         const recentOpportunities = opportunities.filter((o: any) => {
             const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();
             return date > oneWeekAgo;
@@ -215,17 +240,19 @@ export class GoHighLevelConnector extends BaseConnector {
             return lower.includes('consult') || lower.includes('scheduled') || lower.includes('booked') || lower.includes('appointment');
         };
 
-        // Count opportunities in consultation stages
+        // Count opportunities in consultation stages (fallback if calendar API unavailable)
         const consultationOpps = opportunities.filter((o: any) =>
-            o.status === 'open' && isConsultationStage(o.pipelineStageName)
+            o.status === 'open' && isConsultationStage(stageMap[o.pipelineStageId] || o.pipelineStageName)
         );
-        const consultationsScheduled = consultationOpps.length;
-
-        // Count consultations scheduled this week
-        const consultationsWeekly = consultationOpps.filter((o: any) => {
+        const stageBasedConsults = consultationOpps.length;
+        const stageBasedConsultsWeekly = consultationOpps.filter((o: any) => {
             const date = new Date(o.createdAt || o.dateCreated || o.dateAdded).getTime();
             return date > oneWeekAgo;
         }).length;
+
+        // Use calendar API counts if available, fall back to stage-based
+        const consultationsScheduled = calendarConsultsYTD > 0 ? calendarConsultsYTD : stageBasedConsults;
+        const consultationsWeekly = calendarConsultsYTD > 0 ? calendarConsultsWeekly : stageBasedConsultsWeekly;
 
         // Conversion rate = won / total
         const conversionRate = opportunities.length > 0 ? (wonOpps / opportunities.length) * 100 : 0;

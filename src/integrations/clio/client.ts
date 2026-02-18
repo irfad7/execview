@@ -148,6 +148,38 @@ export class ClioConnector extends BaseConnector {
         }
     }
 
+    // Fetch the count of matters created since a given ISO date string.
+    // Uses created_since filter which is confirmed valid on the Clio v4 matters API.
+    // Status is intentionally omitted so both open and closed new matters are counted.
+    private async fetchMatterCountSince(isoDate: string): Promise<number> {
+        const params = new URLSearchParams({
+            created_since: isoDate,
+            fields: 'id',
+            limit: '200'
+        });
+        const data = await this.makeRequest(`/matters.json?${params}`);
+        return data.meta?.records ?? (data.data?.length || 0);
+    }
+
+    async fetchNewCasesCounts(): Promise<{ weekly: number; ytd: number }> {
+        try {
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const jan1 = new Date(now.getFullYear(), 0, 1).toISOString();
+
+            const [weekly, ytd] = await Promise.all([
+                this.fetchMatterCountSince(sevenDaysAgo),
+                this.fetchMatterCountSince(jan1)
+            ]);
+
+            console.log(`Clio: New cases signed — weekly: ${weekly}, YTD: ${ytd}`);
+            return { weekly, ytd };
+        } catch (error) {
+            console.warn("Clio: Could not fetch new cases counts:", error);
+            return { weekly: 0, ytd: 0 };
+        }
+    }
+
     async fetchClosedMattersThisWeek(): Promise<ClioMatter[]> {
         try {
             const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -279,10 +311,11 @@ export class ClioConnector extends BaseConnector {
         }
 
         // Fetch additional data - these may fail due to scope limitations, which is OK
-        const [calendarEntries, bills, closedMattersThisWeek] = await Promise.all([
+        const [calendarEntries, bills, closedMattersThisWeek, newCasesCounts] = await Promise.all([
             this.fetchCalendarEntries(),
             this.fetchBills(),
-            this.fetchClosedMattersThisWeek().catch(() => []) // Don't fail if this errors
+            this.fetchClosedMattersThisWeek().catch(() => []),
+            this.fetchNewCasesCounts()
         ]);
 
         // Build client → outstanding balance map from bills.
@@ -392,7 +425,8 @@ export class ClioConnector extends BaseConnector {
             data: {
                 // Core metrics for dashboard integration
                 activeCases: mappedMatters.length,
-                newCasesSignedWeekly: 0, // Would need created_at filtering
+                newCasesSignedWeekly: newCasesCounts.weekly,
+                newCasesSignedYTD: newCasesCounts.ytd,
                 matters: mappedMatters,
 
                 // Case Management Dashboard
