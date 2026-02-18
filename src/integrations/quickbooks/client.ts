@@ -306,34 +306,57 @@ export class QuickBooksConnector extends BaseConnector {
         console.log("QB P&L Data structure:", JSON.stringify(profitLossData).substring(0, 500));
 
         if (profitLossData?.Rows?.Row) {
-            // Parse P&L structure to find total income
-            const findRevenue = (rows: any[]): number => {
+            // Trust account entries are client funds (liability), never revenue — skip them
+            const isTrustRow = (label: string) => label.includes('trust') || label.includes('iolta');
+
+            // Parse P&L structure to find operating income (legal fees only, no trust)
+            // Priority: exact "Income" section total → "Total Income" → "Gross Profit"
+            const findRevenue = (rows: any[], pass: 1 | 2 = 1): number => {
                 for (const row of rows) {
-                    // Check for Summary row with "Total Income" or "Net Income"
+                    const summaryLabel = row.Summary?.ColData?.[0]?.value?.toLowerCase() || '';
+                    const colLabel = row.ColData?.[0]?.value?.toLowerCase() || '';
+
+                    // Always skip trust/IOLTA rows
+                    if (isTrustRow(summaryLabel) || isTrustRow(colLabel)) continue;
+
                     if (row.Summary?.ColData) {
-                        const label = row.Summary.ColData[0]?.value?.toLowerCase() || '';
-                        if (label.includes('total income') || label.includes('gross profit')) {
-                            const value = parseFloat(row.Summary.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
-                            console.log(`QB P&L found "${label}": ${value}`);
+                        const value = parseFloat(row.Summary.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
+                        // Pass 1: prefer exact "Income" section summary (e.g. "Total Income" for the Income group only)
+                        if (pass === 1 && (summaryLabel === 'total income' || summaryLabel === 'income')) {
+                            console.log(`QB P&L found (pass 1) "${summaryLabel}": ${value}`);
+                            if (value > 0) return value;
+                        }
+                        // Pass 2: fall back to gross profit
+                        if (pass === 2 && summaryLabel.includes('gross profit')) {
+                            console.log(`QB P&L found (pass 2) "${summaryLabel}": ${value}`);
                             if (value > 0) return value;
                         }
                     }
-                    // Check for regular row
+
                     if (row.ColData) {
-                        const label = row.ColData[0]?.value?.toLowerCase() || '';
-                        if (label.includes('total income') || label.includes('gross profit')) {
-                            const value = parseFloat(row.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
-                            console.log(`QB P&L found "${label}": ${value}`);
+                        const value = parseFloat(row.ColData[1]?.value?.replace(/[,$]/g, '') || '0');
+                        if (pass === 1 && (colLabel === 'total income' || colLabel === 'income')) {
+                            console.log(`QB P&L found (pass 1) "${colLabel}": ${value}`);
+                            if (value > 0) return value;
+                        }
+                        if (pass === 2 && colLabel.includes('gross profit')) {
+                            console.log(`QB P&L found (pass 2) "${colLabel}": ${value}`);
                             if (value > 0) return value;
                         }
                     }
-                    // Check nested rows
+
+                    // Recurse into nested rows
                     if (row.Rows?.Row) {
-                        const nested = findRevenue(row.Rows.Row);
+                        const nested = findRevenue(row.Rows.Row, pass);
                         if (nested > 0) return nested;
                     }
                 }
                 return 0;
+            };
+
+            // Try pass 1 (exact Income section) first, fall back to pass 2 (Gross Profit)
+            const findRevenueWithFallback = (rows: any[]): number => {
+                return findRevenue(rows, 1) || findRevenue(rows, 2);
             };
 
             // Parse P&L structure to find advertising/marketing expenses
@@ -371,7 +394,7 @@ export class QuickBooksConnector extends BaseConnector {
                 return total;
             };
 
-            revenueYTD = findRevenue(profitLossData.Rows.Row);
+            revenueYTD = findRevenueWithFallback(profitLossData.Rows.Row);
             adSpendYTD = findAdSpend(profitLossData.Rows.Row);
         }
 
@@ -379,9 +402,16 @@ export class QuickBooksConnector extends BaseConnector {
         if (revenueYTD === 0) {
             console.log("QB: P&L revenue is 0, calculating from transactions instead");
 
-            // Sum all deposits
-            const depositsTotal = deposits.reduce((sum: number, dep: any) =>
-                sum + parseFloat(dep.TotalAmt || 0), 0
+            // Trust account helper — reused below for transaction filtering too
+            const isTrustAccount = (txn: any): boolean => {
+                const acct = (txn.DepositToAccountRef?.name || txn.AccountRef?.name || '').toLowerCase();
+                return acct.includes('trust') || acct.includes('iolta');
+            };
+
+            // Sum all deposits, excluding trust account deposits
+            const depositsTotal = deposits
+                .filter((dep: any) => !isTrustAccount(dep))
+                .reduce((sum: number, dep: any) => sum + parseFloat(dep.TotalAmt || 0), 0
             );
 
             // Sum all sales receipts
@@ -413,15 +443,20 @@ export class QuickBooksConnector extends BaseConnector {
         const avgCaseValue = allTransactions.length > 0 ? totalTransactionAmount / allTransactions.length : 0;
 
         // Create normalized transactions array for frontend date filtering
-        // All filtering will happen on the frontend based on the selected date range
-        const transactions = allCollections.map((txn: any) => ({
-            id: txn.Id,
-            type: txn._type as 'deposit' | 'payment' | 'salesReceipt' | 'invoice',
-            clientName: this.extractClientName(txn),
-            amount: parseFloat(txn.TotalAmt || 0),
-            date: txn.TxnDate,
-            account: txn.DepositToAccountRef?.name || txn.AccountRef?.name
-        }));
+        // Exclude trust/IOLTA account entries — client funds are not firm revenue
+        const transactions = allCollections
+            .filter((txn: any) => {
+                const acct = (txn.DepositToAccountRef?.name || txn.AccountRef?.name || '').toLowerCase();
+                return !acct.includes('trust') && !acct.includes('iolta');
+            })
+            .map((txn: any) => ({
+                id: txn.Id,
+                type: txn._type as 'deposit' | 'payment' | 'salesReceipt' | 'invoice',
+                clientName: this.extractClientName(txn),
+                amount: parseFloat(txn.TotalAmt || 0),
+                date: txn.TxnDate,
+                account: txn.DepositToAccountRef?.name || txn.AccountRef?.name
+            }));
 
         console.log(`QB Metrics: Revenue YTD: $${revenueYTD}, Ad Spend YTD: $${adSpendYTD}, Avg Case Value: $${avgCaseValue}, Total Transactions: ${transactions.length}`);
 
