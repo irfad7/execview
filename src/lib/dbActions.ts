@@ -469,6 +469,11 @@ export async function getProfile() {
     return profile;
 }
 
+// System-level profile reader — no session required (used by cron/report routes).
+export async function getProfileForSystem() {
+    return prisma.profile.findFirst({ orderBy: { userId: 'asc' } });
+}
+
 export async function updateProfile(data: { name: string, firmName: string, email?: string, phone?: string }) {
     const user = await getUser();
     if (!user) return;

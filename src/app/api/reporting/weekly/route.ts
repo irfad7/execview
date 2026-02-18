@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProfile, addLog, getSystemSetting, getCachedDataForSystem } from '@/lib/dbActions';
+import { getProfileForSystem, addLog, getSystemSetting, getCachedDataForSystem } from '@/lib/dbActions';
 import { sendWeeklyFirmReport, WeeklyReportEmailData } from '@/lib/resendEmail';
 
 // ── Compute the most recent Mon–Sun week range label ──────────────────────────
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
             if (typeof body?.to === 'string' && body.to.includes('@')) toOverride = body.to;
         } catch { /* no body or non-JSON — that's fine */ }
 
-        const profile = await getProfile();
+        const profile = await getProfileForSystem();
 
         if (!toOverride && (!profile || !profile.email)) {
             return NextResponse.json({ message: 'No profile/email found — cannot send report' }, { status: 400 });
