@@ -2,6 +2,19 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.6] - 2026-02-18
+
+### Fixed
+- **QB Ad Spend Token Refresh**: Manually refreshed QB access token + cleared dashboard cache to force fresh sync with adSpendYTD data
+
+### Verified
+- **QuickBooks P&L confirmed**: "Advertising & marketing" expense category exists ($514.86 YTD as of today)
+  - Row type: `ColData` → `type: "Data"` inside a `Section` group
+  - Parser correctly matches label via `.includes('advertising')` + `.includes('marketing')`
+  - adSpendYTD will now populate on next dashboard load
+
+---
+
 ## [1.2.5] - 2026-02-18
 
 ### Major Cleanup - Production Ready
