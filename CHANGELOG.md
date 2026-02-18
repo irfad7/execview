@@ -2,6 +2,20 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.3.2] - 2026-02-18
+
+### Fixed — Weekly email report: three data accuracy bugs
+
+#### `src/app/api/reporting/weekly/route.ts`
+- **Revenue This Week was always $0** — was reading `qb.paymentsCollectedWeekly` which was never written to the `qb` sub-object in cache. Now sums `qb.transactions` filtered to last 7 days directly in the route (same source the bookkeeping page uses).
+- **Junk lead sources in email** — removed second loop that re-added all unrecognised GHL source strings (`call_made`, `name via lookup`, `couldn't find caller name`, `retainer sent`, etc.) back into the `leadSources` payload after the known-sources filter. Email now shows only the 5 real marketing channels.
+- **Conversion rate section labels were wrong** — renamed local variables and clarified that `ghl.conversionRate` = won/total leads ("Lead → Retainer") and `ghl.closeRate` = won/(won+lost) ("Close Rate"). Previous labels "Lead → Consultation" and "Consult → Retainer" did not match the underlying formulas.
+
+#### `src/components/email/FirmMetricsEmail.ts`
+- Updated conversion rate cell labels: `Lead → Consultation` → `Lead → Retainer`; `Consult → Retainer` → `Close Rate`
+
+---
+
 ## [1.3.1] - 2026-02-18
 
 ### Added — Resend email library + full weekly Firm Metrics Report

@@ -67,22 +67,33 @@ import { ClioConnector } from "@/integrations/clio/client";
 import { QuickBooksConnector } from "@/integrations/quickbooks/client";
 import { GoHighLevelConnector } from "@/integrations/gohighlevel/client";
 
-export async function refreshDashboardData() {
-    const user = await getUser();
-    if (!user) throw new Error("Unauthorized");
-
-    console.log("Starting dashboard refresh for user:", user.email);
+/**
+ * Refresh all dashboard data (Clio + GHL + QB) and update the cache.
+ * Accepts an optional overrideUserId so it can be called without a session
+ * cookie (e.g. from webhook handlers for background/auto-sync).
+ */
+export async function refreshDashboardData(overrideUserId?: string) {
+    let userId: string;
+    if (overrideUserId) {
+        userId = overrideUserId;
+        console.log("Starting background dashboard refresh for userId:", userId);
+    } else {
+        const user = await getUser();
+        if (!user) throw new Error("Unauthorized");
+        userId = user.id;
+        console.log("Starting dashboard refresh for user:", user.email);
+    }
 
     // First, refresh any expiring tokens proactively
     console.log("Checking and refreshing tokens if needed...");
-    const tokenRefreshResults = await refreshAllExpiringTokens(user.id);
+    const tokenRefreshResults = await refreshAllExpiringTokens(userId);
     console.log("Token refresh results:", JSON.stringify(tokenRefreshResults, null, 2));
 
     // Get valid tokens with automatic refresh
     // IMPORTANT: QuickBooks tokens only last 1 hour, so always get fresh tokens
-    const clioToken = await getValidAccessToken('clio', user.id);
-    const qbToken = await getValidAccessTokenWithRealm('quickbooks', user.id);
-    const ghlToken = await getValidAccessTokenWithRealm('execview', user.id);
+    const clioToken = await getValidAccessToken('clio', userId);
+    const qbToken = await getValidAccessTokenWithRealm('quickbooks', userId);
+    const ghlToken = await getValidAccessTokenWithRealm('execview', userId);
 
     // Log detailed token status for debugging
     console.log("=== TOKEN STATUS ===");
@@ -218,7 +229,7 @@ export async function refreshDashboardData() {
                 // Merge stored call durations (written by the /call webhook) into the opportunity feed
                 try {
                     const callData = await prisma.gHLOpportunity.findMany({
-                        where: { userId: user.id, isActive: true, customFields: { not: null } },
+                        where: { userId: userId, isActive: true, customFields: { not: null } },
                         select: { opportunityId: true, customFields: true }
                     });
                     const callMap: Record<string, string> = {};
@@ -296,9 +307,17 @@ export async function refreshDashboardData() {
         await addLog('quickbooks', 'error', 'Sync failed', errorMsg);
     }
 
-    // Update Cache
-    await setCachedData(metrics);
-    await updateSyncStatus("success");
+    // Update Cache — write directly with userId so this works with or without a session cookie
+    await prisma.dashboardCache.upsert({
+        where: { userId_cacheKey: { userId, cacheKey: 'dashboard_metrics' } },
+        update: { cacheData: JSON.stringify(metrics), updatedAt: new Date() },
+        create: { userId, cacheKey: 'dashboard_metrics', cacheData: JSON.stringify(metrics) }
+    });
+    await prisma.syncStatus.upsert({
+        where: { userId_service: { userId, service: 'general' } },
+        update: { status: 'success', errorMessage: null, lastUpdated: new Date() },
+        create: { userId, service: 'general', status: 'success', lastUpdated: new Date() }
+    });
 
     return metrics;
 }

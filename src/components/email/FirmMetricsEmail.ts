@@ -233,13 +233,13 @@ export function generateFirmMetricsEmailHtml(d: WeeklyReportEmailData): string {
                         <td width="50%" style="padding-right:8px;padding-top:10px;">
                           <div style="background:#0f0f23;border-radius:8px;padding:16px;">
                             <div style="font-size:28px;font-weight:800;color:#10b981;line-height:1;">${fmtPct(d.consultsPerLeadRate)}</div>
-                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Lead → Consultation</div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Lead → Retainer</div>
                           </div>
                         </td>
                         <td width="50%" style="padding-left:8px;padding-top:10px;">
                           <div style="background:#0f0f23;border-radius:8px;padding:16px;">
                             <div style="font-size:28px;font-weight:800;color:#10b981;line-height:1;">${fmtPct(d.retainersPerConsultRate)}</div>
-                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Consult → Retainer</div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:4px;">Close Rate</div>
                           </div>
                         </td>
                       </tr>

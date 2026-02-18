@@ -51,10 +51,19 @@ export async function POST(request: Request) {
 
         const { ghl, qb } = firmMetrics;
 
+        // ── Revenue this week — sum QB transactions in last 7 days ───────────
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const transactions: Array<{ date: string; amount: number }> = qb.transactions ?? [];
+        const revenueWeekly = transactions
+            .filter(t => new Date(t.date) >= sevenDaysAgo)
+            .reduce((sum, t) => sum + (t.amount ?? 0), 0);
+
         // ── Conversion rates ─────────────────────────────────────────────────
-        // conversionRate and closeRate come from GHL as percentages
-        const consultsPerLeadRate = typeof ghl.conversionRate === 'number' ? ghl.conversionRate : 0;
-        const retainersPerConsultRate = typeof ghl.closeRate === 'number' ? ghl.closeRate : 0;
+        // ghl.conversionRate = won / total leads  → "Lead → Retainer" rate
+        // ghl.closeRate      = won / (won + lost) → "Close Rate" (out of decided deals)
+        const leadToRetainerRate = typeof ghl.conversionRate === 'number' ? ghl.conversionRate : 0;
+        const closeRate = typeof ghl.closeRate === 'number' ? ghl.closeRate : 0;
 
         // ── Marketing ROI ─────────────────────────────────────────────────────
         const adSpendYTD = qb.adSpendYTD ?? 0;
@@ -66,6 +75,8 @@ export async function POST(request: Request) {
         const costPerAcquisition = retainersSigned > 0 ? adSpendYTD / retainersSigned : 0;
 
         // ── Lead sources — filter to known sources only ───────────────────────
+        // Only include recognised marketing channels; skip phone-system artifacts
+        // (call_made, name via lookup, couldn't find caller name, etc.)
         const knownSources = ['Google LSA', 'Social Media', 'Website/SEO', 'Google Business Profile', 'Referral', 'Referrals'];
         const rawSources = ghl.leadSources ?? {};
         const leadSources: Record<string, number> = {};
@@ -74,12 +85,6 @@ export async function POST(request: Request) {
                 // Normalise "Referral" / "Referrals" → "Referrals"
                 const key = src === 'Referral' ? 'Referrals' : src;
                 leadSources[key] = (leadSources[key] ?? 0) + rawSources[src];
-            }
-        }
-        // Also include any remaining sources not in the known list
-        for (const [src, cnt] of Object.entries(rawSources)) {
-            if (!knownSources.includes(src) && cnt > 0) {
-                leadSources[src] = cnt;
             }
         }
 
@@ -92,14 +97,14 @@ export async function POST(request: Request) {
             weekRange,
             yearLabel,
 
-            revenueWeekly: qb.paymentsCollectedWeekly ?? 0,
+            revenueWeekly,
             revenueYTD: feesCollectedYTD,
 
             leadsWeekly: ghl.leadsWeekly ?? 0,
             leadsYTD: ghl.leadsYTD ?? 0,
 
-            consultsPerLeadRate,
-            retainersPerConsultRate,
+            consultsPerLeadRate: leadToRetainerRate,
+            retainersPerConsultRate: closeRate,
 
             adSpendYTD,
             feesCollectedYTD,

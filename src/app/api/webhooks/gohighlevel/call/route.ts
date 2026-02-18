@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { refreshDashboardData } from "@/lib/dbActions";
 
 const prisma = new PrismaClient();
 
@@ -102,14 +103,40 @@ export async function POST(request: NextRequest) {
             console.warn(`Call webhook: no opportunity found for contactId=${contactId}`);
         }
 
-        // Invalidate dashboard cache
-        await prisma.dashboardCache.deleteMany({ where: { userId } });
+        // Invalidate dashboard cache (forces fresh load on next user visit)
+        await prisma.dashboardCache.deleteMany({
+            where: { userId, cacheKey: 'dashboard_metrics' }
+        });
+
+        // Auto-sync all data — at most once every 24 hours.
+        // Each incoming call acts as a heartbeat that keeps the dashboard fresh
+        // without needing a cron job.
+        const lastSync = await prisma.syncStatus.findFirst({
+            where: { userId, service: 'general' },
+            orderBy: { lastUpdated: 'desc' }
+        });
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const lastSyncTime = lastSync?.lastUpdated ? new Date(lastSync.lastUpdated) : null;
+        const shouldSync = !lastSyncTime || lastSyncTime < oneDayAgo;
+
+        if (shouldSync) {
+            console.log("Call webhook: triggering background full sync for userId:", userId);
+            // Fire-and-forget — don't block the webhook response
+            refreshDashboardData(userId).catch(err =>
+                console.error("Call webhook: background sync error:", err)
+            );
+        } else {
+            const lastUpdated = lastSync?.lastUpdated ? new Date(lastSync.lastUpdated) : null;
+            const hoursAgo = lastUpdated ? Math.round((Date.now() - lastUpdated.getTime()) / 3600000) : '?';
+            console.log("Call webhook: skipping sync — last sync was", hoursAgo, "hours ago");
+        }
 
         return NextResponse.json({
             status: "ok",
             contactId,
             opportunityUpdated: !!recentOpp,
-            durationSeconds
+            durationSeconds,
+            syncTriggered: shouldSync
         });
 
     } catch (error) {
