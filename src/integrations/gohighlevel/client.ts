@@ -29,6 +29,42 @@ export class GoHighLevelConnector extends BaseConnector {
 
         console.log("GHL: Fetching data for location:", this.locationId);
 
+        // Fetch pipeline stages to resolve stageId → stageName
+        let stageMap: { [stageId: string]: string } = {};
+        try {
+            const pipelinesUrl = `${this.baseUrl}/opportunities/pipelines?locationId=${this.locationId}`;
+            const pipelinesRes = await fetch(pipelinesUrl, { method: 'GET', headers: this.getHeaders() });
+            if (pipelinesRes.ok) {
+                const pipelinesData = await pipelinesRes.json();
+                (pipelinesData.pipelines || []).forEach((p: any) => {
+                    (p.stages || []).forEach((s: any) => {
+                        if (s.id) stageMap[s.id] = s.name;
+                    });
+                });
+                console.log("GHL: Loaded", Object.keys(stageMap).length, "pipeline stages:", stageMap);
+            } else {
+                console.error("GHL Pipelines API Error:", pipelinesRes.status, await pipelinesRes.text());
+            }
+        } catch (error) {
+            console.error("GHL: Failed to fetch pipelines:", error);
+        }
+
+        // Fetch location users to resolve assignedTo UUID → display name
+        let userMap: { [userId: string]: string } = {};
+        try {
+            const usersUrl = `${this.baseUrl}/users/?locationId=${this.locationId}`;
+            const usersRes = await fetch(usersUrl, { method: 'GET', headers: this.getHeaders() });
+            if (usersRes.ok) {
+                const usersData = await usersRes.json();
+                (usersData.users || []).forEach((u: any) => {
+                    if (u.id) userMap[u.id] = u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email;
+                });
+                console.log("GHL: Loaded", Object.keys(userMap).length, "users");
+            }
+        } catch (error) {
+            console.error("GHL: Failed to fetch users (non-fatal):", error);
+        }
+
         // Fetch opportunities using GET with query params (correct GHL API v2 format)
         let opportunities: any[] = [];
         try {
@@ -133,11 +169,22 @@ export class GoHighLevelConnector extends BaseConnector {
         });
 
         // Intelligent Mapping for Opportunity Feed
-        const opportunityFeed = opportunities.slice(0, 50).map((o: any) => {
+        const opportunityFeed = opportunities.map((o: any) => {
             const contact = contacts.find((c: any) => c.id === o.contactId);
             const contactName = o.name || contact?.name ||
                 (contact?.firstName && contact?.lastName ? `${contact.firstName} ${contact.lastName}` : null) ||
                 contact?.firstName || "Unknown";
+
+            // Resolve stage name: pipeline map → direct field → status fallback
+            const stageName = stageMap[o.pipelineStageId] ||
+                o.pipelineStageName ||
+                o.pipelineStage?.name ||
+                this.mapStage(o.status);
+
+            // Resolve assigned user name: user map → raw value → Unassigned
+            const ownerName = (o.assignedTo && userMap[o.assignedTo])
+                ? userMap[o.assignedTo]
+                : (o.assignedTo && !o.assignedTo.match(/^[0-9a-f-]{30,}$/i) ? o.assignedTo : "Unassigned");
 
             return {
                 id: o.id,
@@ -145,10 +192,10 @@ export class GoHighLevelConnector extends BaseConnector {
                 contactName: contactName,
                 date: new Date(o.createdAt || o.dateCreated || Date.now()).toLocaleDateString(),
                 timeOnPhone: "—",
-                stage: o.pipelineStageName || this.mapStage(o.status),
-                pipelineStage: o.pipelineStageName || this.mapStage(o.status),
+                stage: stageName,
+                pipelineStage: stageName,
                 source: contact?.source || o.source || "Direct",
-                owner: o.assignedTo || "Unassigned",
+                owner: ownerName,
                 value: o.monetaryValue || 0,
                 status: o.status
             };

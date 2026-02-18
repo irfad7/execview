@@ -2,6 +2,17 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.8] - 2026-02-18
+
+### Fixed
+- **Lead Source Counts**: Fixed Google LSA showing 45 instead of 67 — source breakdown was built from contacts API (limited + polluted source fields), now correctly built from opportunities API
+- **Junk Lead Sources Removed**: Filtered out phone system artifacts and pipeline stage names from Leads by Source chart (`call_made`, `name via lookup`, `couldn't find caller name`, `retainer sent`)
+
+### Removed
+- **Export PDF buttons**: Removed non-functional Export PDF buttons from Metrics, Leads, Bookkeeping, and Cases pages
+
+---
+
 ## [1.2.7] - 2026-02-18
 
 ### Fixed — Clio API data mismatches (Discovery, Plea Offer, Court Date, Balance)

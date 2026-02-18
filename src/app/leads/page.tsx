@@ -18,6 +18,28 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+function getStageBadgeClass(stage: string): string {
+    const s = stage.toLowerCase();
+    if (s.includes('retainer') || s.includes('signed') || s.includes('hired') || s.includes('won') || s.includes('closed'))
+        return "bg-success/10 text-success border border-success/20";
+    if (s.includes('consult') || s.includes('scheduled') || s.includes('booked') || s.includes('appointment'))
+        return "bg-primary/10 text-primary border border-primary/20";
+    if (s.includes('lost') || s.includes('no show') || s.includes('not interested'))
+        return "bg-error/10 text-error border border-error/20";
+    if (s.includes('abandoned'))
+        return "bg-zinc-700/50 text-zinc-400 border border-zinc-600/30";
+    return "bg-zinc-800 text-zinc-400 border border-white/5";
+}
+
+function getStatusDotClass(status: string): string {
+    switch (status?.toLowerCase()) {
+        case 'won': return "bg-success";
+        case 'lost': return "bg-error";
+        case 'abandoned': return "bg-zinc-500";
+        default: return "bg-primary";
+    }
+}
+
 export default function LeadsPage() {
     const { data, loading } = useDashboard();
     const { filter, isInRange } = useDateFilter();
@@ -110,10 +132,11 @@ export default function LeadsPage() {
                                 <thead>
                                     <tr className="border-b border-sidebar-border text-zinc-500 text-xs uppercase tracking-wider">
                                         <th className="px-6 py-4 font-semibold">Lead Name</th>
-                                        <th className="px-6 py-4 font-semibold">Owner</th>
+                                        <th className="px-6 py-4 font-semibold">Assigned To</th>
                                         <th className="px-6 py-4 font-semibold">Date Created</th>
                                         <th className="px-6 py-4 font-semibold">On Phone</th>
                                         <th className="px-6 py-4 font-semibold">Pipeline Stage</th>
+                                        <th className="px-6 py-4 font-semibold">Status</th>
                                         <th className="px-6 py-4 font-semibold">Source</th>
                                     </tr>
                                 </thead>
@@ -126,9 +149,9 @@ export default function LeadsPage() {
                                             <td className="px-6 py-4 text-zinc-400">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 border border-white/5">
-                                                        {lead.owner.charAt(0)}
+                                                        {lead.owner !== "Unassigned" ? lead.owner.charAt(0).toUpperCase() : "—"}
                                                     </div>
-                                                    {lead.owner}
+                                                    <span className={lead.owner === "Unassigned" ? "text-zinc-600 italic" : ""}>{lead.owner}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-zinc-500">{lead.date}</td>
@@ -136,13 +159,16 @@ export default function LeadsPage() {
                                             <td className="px-6 py-4">
                                                 <span className={cn(
                                                     "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                                    lead.stage === "Consult Scheduled" ? "bg-primary/10 text-primary border border-primary/20" :
-                                                        lead.stage === "Retainer Sent" ? "bg-success/10 text-success border border-success/20" :
-                                                            lead.stage === "Lost" ? "bg-error/10 text-error border border-error/20" :
-                                                                "bg-zinc-800 text-zinc-400 border border-white/5"
+                                                    getStageBadgeClass(lead.stage || '')
                                                 )}>
-                                                    {lead.stage}
+                                                    {lead.stage || "—"}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={cn("w-1.5 h-1.5 rounded-full", getStatusDotClass(lead.status))} />
+                                                    <span className="text-xs font-medium text-zinc-400 capitalize">{lead.status || "open"}</span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-zinc-500 font-medium">{lead.source}</td>
                                         </tr>
