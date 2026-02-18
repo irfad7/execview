@@ -2,6 +2,47 @@
 
 All notable changes to ExecView - Executive Law Firm Dashboard.
 
+## [1.2.7] - 2026-02-18
+
+### Fixed — Clio API data mismatches (Discovery, Plea Offer, Court Date, Balance)
+
+Root cause: three separate API contract violations in `src/integrations/clio/client.ts`.
+
+#### Bug 1 — `getCustomFieldById` always returned `null`
+- **Root cause**: Clio v4 returns `custom_field_values[].id` as a composite value-record
+  string like `"date-1284285991"`, NOT the field definition ID (e.g. `16937581`).
+  Every ID-based lookup silently failed and fell through to the name-based checkbox
+  fallback — which only covers Discovery/Plea booleans, not dates or text fields.
+- **Impact**: Court dates stored in the "Next Court Date" custom field were always
+  `null`; Plea Offer details were always `null`; Charge Type / Case Number / Custody
+  Status came from fallback logic instead of the actual field values.
+- **Fix**: Added `CLIO_FIELD_NAME_MAP` (definition ID → exact `field_name` string)
+  and rewrote `getCustomFieldById` to match by `field_name` first, with the legacy
+  id-based check kept as a secondary fallback.
+
+#### Bug 2 — `outstanding_balance` is not a valid Clio v4 matters field
+- **Root cause**: The code requested `fields=id,outstanding_balance` on the matters
+  endpoint. Clio returns `{"error":{"type":"InvalidFields",...}}`, the catch-block
+  silently swallowed the error and defaulted every case balance to `$0`.
+- **Fix**: Removed the invalid `outstanding_balance` request from `fetchMatters`.
+  Balances are now derived from `fetchBills()` and matched to matters via `client.id`.
+
+#### Bug 3 — `fetchBills` used invalid field names
+- **Root cause**: Fields `due_date` and `matter` do not exist on Clio v4 bill objects.
+  The correct names are `due_at` and (no direct matter link — bills attach to clients).
+- **Fix**: Updated `fetchBills` to use `fields=id,total,paid,balance,state,issued_at,due_at,client{id,name}`.
+  Updated `ClioBill` interface to match. Bills are now linked to matters via `client.id`.
+
+#### Additional improvements
+- `fetchMetrics` now builds a `clientId → outstanding balance` map from awaiting-payment
+  bills and assigns it to each matter during mapping.
+- Payments-this-week calculation now correctly filters by `state === 'paid'` and
+  `issued_at` date rather than a vacuous date comparison.
+- `fetchMatters` limit raised from 100 → 200 to handle firm growth.
+- `ClioMatter` interface annotated to document why `outstanding_balance` is absent.
+
+---
+
 ## [1.2.6] - 2026-02-18
 
 ### Fixed

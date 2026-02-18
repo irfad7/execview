@@ -7,7 +7,6 @@ import { Header } from "@/components/Header";
 import { MetricCard } from "@/components/Card";
 import {
     BarChart2,
-    ArrowUpRight,
     TrendingUp,
     Clock,
     Briefcase,
@@ -38,7 +37,7 @@ export default function OverviewPage() {
                 <Header title="ExecView Dashboard" />
                 <div className="p-8 flex flex-col items-center justify-center h-full text-center space-y-4">
                     <div className="p-4 bg-zinc-800 rounded-full">
-                        <ArrowUpRight className="w-8 h-8 text-zinc-400" />
+                        <BarChart2 className="w-8 h-8 text-zinc-400" />
                     </div>
                     <h2 className="text-2xl font-bold text-white">No Data Available</h2>
                     {error && (
@@ -116,18 +115,6 @@ export default function OverviewPage() {
                                     )}
                                 </p>
 
-                                <div className="flex gap-4 mt-8">
-                                    <button
-                                        onClick={async () => {
-                                            const { refreshDashboardData } = await import('@/lib/dbActions');
-                                            await refreshDashboardData();
-                                            window.location.reload();
-                                        }}
-                                        className="bg-primary hover:bg-primary/80 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                                    >
-                                        Refresh Data <ArrowUpRight className="w-4 h-4" />
-                                    </button>
-                                </div>
                             </div>
 
                             <div className="absolute right-0 top-0 w-1/3 h-full overflow-hidden pointer-events-none opacity-20">

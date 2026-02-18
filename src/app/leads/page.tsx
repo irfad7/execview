@@ -8,12 +8,10 @@ import {
     Users,
     Phone,
     Calendar,
-    Activity,
-    Download
+    Activity
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { exportToPdf } from "@/lib/pdfUtils";
 import { useMemo } from "react";
 
 function cn(...inputs: ClassValue[]) {
@@ -69,20 +67,11 @@ export default function LeadsPage() {
             <Header title="Leads & Opportunity Pipeline" />
 
             <main className="p-8 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white font-display tracking-tight">Lead Performance</h2>
-                        <p className="text-zinc-400 text-sm font-medium">
-                            Showing {leads.length} opportunities for {filter.label}
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => exportToPdf('leads-content', 'Leads_Pipeline_Report')}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold hover:bg-primary/20 transition-all text-sm"
-                    >
-                        <Download className="w-4 h-4" />
-                        Export Leads PDF
-                    </button>
+                <div>
+                    <h2 className="text-2xl font-bold text-white font-display tracking-tight">Lead Performance</h2>
+                    <p className="text-zinc-400 text-sm font-medium">
+                        Showing {leads.length} opportunities for {filter.label}
+                    </p>
                 </div>
 
                 <div id="leads-content" className="space-y-8">

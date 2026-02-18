@@ -6,7 +6,8 @@ interface ClioMatter {
     description: string;
     status: string;
     practice_area?: { id: string; name: string };
-    outstanding_balance?: number;
+    // Note: outstanding_balance is NOT a valid field on the Clio v4 matters endpoint.
+    // Balances are derived from bills via client.id matching.
     client?: { id: string; name: string };
     custom_field_values?: Array<{ id: string; field_name: string; value: any }>;
     created_at: string;
@@ -26,12 +27,17 @@ interface ClioBill {
     total: number;
     paid: number;
     balance: number;
-    due_date: string;
-    matter?: { id: string };
+    state: string;        // 'awaiting_payment' | 'paid' | 'void' | 'draft'
+    issued_at: string;
+    due_at: string;       // Clio uses due_at, not due_date
+    client?: { id: string; name: string };  // Bills link to matters via client.id
 }
 
-// Hardcoded Clio custom field IDs for Shahnam's account
-// These are more reliable than string matching
+// Clio custom field IDs for Shahnam's account
+// NOTE: Clio v4 API returns custom_field_values[].id as a composite string
+// like "date-1284285991" (the value-record ID), NOT the field definition ID.
+// We use field_name matching instead; these IDs are kept for reference and
+// as a secondary fallback in case Clio ever returns custom_field{id}.
 const CLIO_CUSTOM_FIELDS = {
     PLEA_OFFER_RECEIVED: '16937551',      // checkbox - Track if plea offer received
     DISCOVERY_RECEIVED: '16937566',        // checkbox - Track if discovery received
@@ -41,6 +47,20 @@ const CLIO_CUSTOM_FIELDS = {
     CUSTODY_STATUS: '16573291',            // picklist - Client custody status
     CASE_NUMBER: '16592671',               // text_area - Court case number
     PLEA_OFFER_DETAILS: '16937536',        // text_area - Plea offer details
+};
+
+// Mapping from field definition ID → exact field_name string returned by Clio API.
+// Clio's custom_field_values[].id is the VALUE record ID (e.g. "date-1284285991"),
+// not the field definition ID, so we match by field_name instead.
+const CLIO_FIELD_NAME_MAP: Record<string, string> = {
+    [CLIO_CUSTOM_FIELDS.PLEA_OFFER_RECEIVED]: 'Plea Offer Received?',
+    [CLIO_CUSTOM_FIELDS.DISCOVERY_RECEIVED]:  'Discovery Received?',
+    [CLIO_CUSTOM_FIELDS.NEXT_COURT_DATE]:     'Next Court Date',
+    [CLIO_CUSTOM_FIELDS.NEXT_COURT_HEARING]:  'Next Court Hearing',
+    [CLIO_CUSTOM_FIELDS.CHARGE_TYPE]:         'Charge Type',
+    [CLIO_CUSTOM_FIELDS.CUSTODY_STATUS]:      'Custody Status',
+    [CLIO_CUSTOM_FIELDS.CASE_NUMBER]:         'Case Number',
+    [CLIO_CUSTOM_FIELDS.PLEA_OFFER_DETAILS]:  'Plea Offer',
 };
 
 export class ClioConnector extends BaseConnector {
@@ -65,49 +85,22 @@ export class ClioConnector extends BaseConnector {
     }
 
     async fetchMatters(): Promise<ClioMatter[]> {
-        // Start with minimal fields that should always work
-        const minimalFields = 'id,display_number,description,status,practice_area{id,name},client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
-        // Full fields including billing (requires bills:read scope to be enabled in Clio Developer Portal)
-        const fullFields = 'id,display_number,description,status,practice_area{id,name},outstanding_balance,client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
+        // NOTE: 'outstanding_balance' is NOT a valid field on the Clio v4 matters
+        // endpoint — attempting to include it causes an InvalidFields API error.
+        // Outstanding balances are fetched separately via fetchBills() and matched
+        // to matters through client.id in fetchMetrics().
+        const fields = 'id,display_number,description,status,practice_area{id,name},client{id,name},custom_field_values{id,field_name,value},created_at,updated_at';
 
-        // Try minimal fields first (more reliable)
         try {
-            console.log("Clio: Fetching matters with minimal fields...");
+            console.log("Clio: Fetching matters...");
             const params = new URLSearchParams({
                 status: 'open',
-                limit: '100',
-                fields: minimalFields
+                limit: '200',
+                fields
             });
             const data = await this.makeRequest(`/matters.json?${params}`);
             const matters = data.data || [];
             console.log(`Clio: Found ${matters.length} open matters`);
-
-            // Try to fetch billing info separately if we got matters
-            if (matters.length > 0) {
-                try {
-                    console.log("Clio: Attempting to fetch billing info...");
-                    const billingParams = new URLSearchParams({
-                        status: 'open',
-                        limit: '100',
-                        fields: 'id,outstanding_balance'
-                    });
-                    const billingData = await this.makeRequest(`/matters.json?${billingParams}`);
-                    const billingMap = new Map((billingData.data || []).map((m: any) => [m.id, m.outstanding_balance]));
-
-                    // Merge billing data into matters
-                    matters.forEach((matter: any) => {
-                        matter.outstanding_balance = billingMap.get(matter.id) || 0;
-                    });
-                    console.log("Clio: Successfully merged billing data");
-                } catch (billingError) {
-                    console.warn("Clio: Could not fetch billing info (bills:read scope may not be enabled):", billingError);
-                    // Continue without billing data - set all to 0
-                    matters.forEach((matter: any) => {
-                        matter.outstanding_balance = 0;
-                    });
-                }
-            }
-
             return matters;
         } catch (error) {
             console.error("Clio: Failed to fetch matters:", error);
@@ -138,9 +131,12 @@ export class ClioConnector extends BaseConnector {
 
     async fetchBills(): Promise<ClioBill[]> {
         try {
+            // Valid Clio v4 bill fields: id, balance, total, paid, state, issued_at, due_at, client{id,name}
+            // Note: 'due_date' and 'matter' are NOT valid fields on bills in Clio v4.
+            // Bills are linked to matters indirectly via client.id.
             const params = new URLSearchParams({
-                fields: 'id,total,paid,balance,due_date,matter{id}',
-                limit: '100'
+                fields: 'id,total,paid,balance,state,issued_at,due_at,client{id,name}',
+                limit: '200'
             });
 
             const data = await this.makeRequest(`/bills.json?${params}`);
@@ -210,14 +206,25 @@ export class ClioConnector extends BaseConnector {
         }
     }
 
-    // Get custom field value by hardcoded ID (more reliable than string matching)
+    // Get custom field value by field definition ID.
+    // Clio v4 returns custom_field_values[].id as a composite value-record string
+    // (e.g. "date-1284285991"), NOT the definition ID.  We therefore match by
+    // field_name using CLIO_FIELD_NAME_MAP, with the legacy id-based check as a
+    // secondary fallback in case Clio changes behaviour or returns custom_field{id}.
     private getCustomFieldById(customFields: any[], fieldId: string): any {
         if (!customFields || !Array.isArray(customFields)) return null;
 
+        // Primary: match by the exact field_name we know for this field definition ID
+        const knownFieldName = CLIO_FIELD_NAME_MAP[fieldId];
+        if (knownFieldName) {
+            const field = customFields.find(f => f.field_name === knownFieldName);
+            if (field !== undefined) return field.value ?? null;
+        }
+
+        // Fallback: legacy id-based check (works if Clio ever returns custom_field{id})
         const field = customFields.find(f =>
             f.id?.toString() === fieldId || f.custom_field?.id?.toString() === fieldId
         );
-
         return field?.value ?? null;
     }
 
@@ -278,7 +285,19 @@ export class ClioConnector extends BaseConnector {
             this.fetchClosedMattersThisWeek().catch(() => []) // Don't fail if this errors
         ]);
 
-        // Map matters with hardcoded field IDs (reliable) + fallback to string matching
+        // Build client → outstanding balance map from bills.
+        // Clio v4 bills don't expose a direct matter link; client.id is the bridge.
+        // Sum balances for awaiting_payment bills per client (exclude void/paid).
+        const clientBalanceMap = new Map<string, number>();
+        for (const bill of bills) {
+            if (bill.client?.id && bill.state === 'awaiting_payment' && bill.balance > 0) {
+                const clientId = bill.client.id.toString();
+                clientBalanceMap.set(clientId, (clientBalanceMap.get(clientId) || 0) + bill.balance);
+            }
+        }
+        console.log(`Clio: Built balance map for ${clientBalanceMap.size} clients from ${bills.length} bills`);
+
+        // Map matters with field_name-based custom field lookup + fallback to string matching
         const mappedMatters = matters.map((m: ClioMatter) => {
             const customFields = m.custom_field_values || [];
 
@@ -302,6 +321,10 @@ export class ClioConnector extends BaseConnector {
                 entry.summary.toLowerCase().includes('court')
             );
 
+            // Look up outstanding balance via client.id (bills link to matters through client)
+            const clientId = m.client?.id?.toString();
+            const outstandingBalance = clientId ? (clientBalanceMap.get(clientId) || 0) : 0;
+
             return {
                 id: m.id.toString(),
                 name: m.display_number ? `${m.display_number} - ${m.description}` : m.description,
@@ -317,7 +340,7 @@ export class ClioConnector extends BaseConnector {
                 custodyStatus,
                 upcomingCourtDate: nextCourtDate || courtEntry?.start_at || null,
                 nextCourtHearing,
-                outstandingBalance: m.outstanding_balance || 0
+                outstandingBalance
             };
         });
 
@@ -353,11 +376,11 @@ export class ClioConnector extends BaseConnector {
         });
 
         // Calculate bookkeeping metrics
+        // A bill is considered "paid this week" if state=paid and issued_at is within 7 days
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const paymentsThisWeek = bills
             .filter(bill => {
-                const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-                // Assuming payments are recent if balance is less than total
-                return bill.paid > 0 && new Date() > weekAgo;
+                return bill.paid > 0 && bill.state === 'paid' && new Date(bill.issued_at) >= weekAgo;
             })
             .reduce((sum, bill) => sum + bill.paid, 0);
 

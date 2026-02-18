@@ -123,10 +123,12 @@ export class GoHighLevelConnector extends BaseConnector {
             return date > startOfYear;
         });
 
-        // Map lead sources
+        // Map lead sources from opportunities (more accurate than contacts)
+        // Contacts often have polluted source fields (phone system artifacts, stage names)
         const leadSourceMap: { [key: string]: number } = {};
-        contacts.forEach((contact: any) => {
-            const source = contact.source || contact.tags?.[0] || 'Direct';
+        opportunities.forEach((o: any) => {
+            const contact = contacts.find((c: any) => c.id === o.contactId);
+            const source = (o.source || contact?.source || 'Direct').trim();
             leadSourceMap[source] = (leadSourceMap[source] || 0) + 1;
         });
 

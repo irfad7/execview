@@ -9,11 +9,9 @@ import {
     CircleDollarSign,
     TrendingUp,
     Calendar,
-    Download,
     Briefcase
 } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
-import { exportToPdf } from "@/lib/pdfUtils";
 
 export default function BookkeepingPage() {
     const { data, loading } = useDashboard();
@@ -63,20 +61,11 @@ export default function BookkeepingPage() {
                 <Header title="Bookkeeping & Collections" />
 
                 <main className="p-8 space-y-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-white font-display tracking-tight">Financial Overview</h2>
-                            <p className="text-zinc-400 text-sm font-medium">
-                                Showing {filteredTransactions.length} transactions for {filter.label}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => exportToPdf('bookkeeping-content', 'Bookkeeping_Report')}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold hover:bg-primary/20 transition-all text-sm"
-                        >
-                            <Download className="w-4 h-4" />
-                            Export PDF
-                        </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white font-display tracking-tight">Financial Overview</h2>
+                        <p className="text-zinc-400 text-sm font-medium">
+                            Showing {filteredTransactions.length} transactions for {filter.label}
+                        </p>
                     </div>
 
                     <div id="bookkeeping-content" className="space-y-8">

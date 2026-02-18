@@ -9,12 +9,10 @@ import {
     AlertCircle,
     FileCheck,
     CircleDollarSign,
-    Gavel,
-    Download
+    Gavel
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { exportToPdf } from "@/lib/pdfUtils";
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -63,20 +61,11 @@ export default function CasesPage() {
             <Header title="Case Management" />
 
             <main className="p-8 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white font-display tracking-tight">Case Portfolio</h2>
-                        <p className="text-zinc-400 text-sm font-medium">
-                            Showing {clioData.length} open cases from Clio
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => exportToPdf('cases-content', 'Case_Portfolio_Report')}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold hover:bg-primary/20 transition-all text-sm"
-                    >
-                        <Download className="w-4 h-4" />
-                        Export Cases PDF
-                    </button>
+                <div>
+                    <h2 className="text-2xl font-bold text-white font-display tracking-tight">Case Portfolio</h2>
+                    <p className="text-zinc-400 text-sm font-medium">
+                        Showing {clioData.length} open cases from Clio
+                    </p>
                 </div>
 
                 <div id="cases-content" className="space-y-8">

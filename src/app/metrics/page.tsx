@@ -10,14 +10,12 @@ import {
     Target,
     TrendingUp,
     BarChart,
-    Download,
     DollarSign,
     Percent,
     Briefcase,
     Star
 } from "lucide-react";
 import { PageTransition, AnimatedCard } from "@/lib/animations";
-import { exportToPdf } from "@/lib/pdfUtils";
 
 const LEAD_SOURCE_COLORS = [
     "bg-primary",
@@ -114,7 +112,17 @@ export default function MetricsPage() {
         : null;
 
     // --- Lead Sources ---
-    const leadSources = data.ghl?.leadSources || {};
+    // Filter out junk entries that are phone system artifacts or pipeline stage names
+    const JUNK_SOURCES = new Set([
+        'call_made', 'name via lookup', "couldn't find caller name",
+        'retainer sent', 'retainer_sent', 'unknown', ''
+    ]);
+    const rawLeadSources = data.ghl?.leadSources || {};
+    const leadSources = Object.fromEntries(
+        Object.entries(rawLeadSources).filter(([source]) =>
+            !JUNK_SOURCES.has(source.toLowerCase().trim())
+        )
+    );
     const totalSourceLeads = Object.values(leadSources).reduce((s, v) => s + v, 0) || 1;
 
     // --- Cases ---
@@ -127,20 +135,11 @@ export default function MetricsPage() {
                 <Header title="Firm Performance Analytics" />
 
                 <main className="p-8 space-y-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-foreground font-display tracking-tight">Firm Metrics</h2>
-                            <p className="text-sidebar-foreground text-sm font-medium">
-                                All metrics shown for: <span className="text-foreground font-bold">{filter.label}</span>
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => exportToPdf('metrics-content', 'Firm_Metrics_Report')}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold hover:bg-primary/20 transition-all text-sm"
-                        >
-                            <Download className="w-4 h-4" />
-                            Export PDF
-                        </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-foreground font-display tracking-tight">Firm Metrics</h2>
+                        <p className="text-sidebar-foreground text-sm font-medium">
+                            All metrics shown for: <span className="text-foreground font-bold">{filter.label}</span>
+                        </p>
                     </div>
 
                     <div id="metrics-content" className="space-y-8">
