@@ -16,6 +16,11 @@ All notable changes to ExecView - Executive Law Firm Dashboard.
   - QB tokens only last 1 hour, previous 5-minute buffer was cutting it too close
 - **Debug Endpoint Bug**: Fixed token expiration check in `/api/debug/test-clio`
   - Was comparing Unix seconds to JS milliseconds (wrong by 1000x)
+- **Clio Scope Resilience**: Made Clio connector work even with limited OAuth scopes
+  - Removed dependency on `who_am_i` endpoint (requires `users:read` scope)
+  - Fetch matters with minimal fields first, then try billing separately
+  - Handle 403/400 errors gracefully for calendar, bills, and closed matters
+  - Falls back to matters endpoint for connection verification
 
 ### Added
 - **Comprehensive Sync Test**: New `/api/debug/sync-test` endpoint
